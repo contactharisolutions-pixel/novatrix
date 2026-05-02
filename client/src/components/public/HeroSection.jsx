@@ -175,7 +175,7 @@ export default function HeroSection() {
               <span style={{ fontSize: '0.8125rem', fontWeight: 800, color: 'var(--cyan)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Novatrix AI System v2.0 Online</span>
             </div>
 
-            <h1 style={{ fontSize: 'clamp(3rem, 5vw, 4.5rem)', fontWeight: 900, fontFamily: 'Outfit, sans-serif', lineHeight: 1.1, marginBottom: '1.5rem', color: '#fff', letterSpacing: '-0.02em' }} className="slide-in-up">
+            <h1 style={{ fontSize: 'clamp(2.5rem, 8vw, 4.5rem)', fontWeight: 900, fontFamily: 'Outfit, sans-serif', lineHeight: 1.1, marginBottom: '1.5rem', color: '#fff', letterSpacing: '-0.02em' }} className="slide-in-up">
               The Future of <br />
               <span style={{ background: 'linear-gradient(135deg, var(--cyan), var(--purple))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', display: 'inline-block', position: 'relative' }}>
                 Algorithmic Trading
@@ -306,6 +306,17 @@ export default function HeroSection() {
         }
         @media (max-width: 640px) {
           .stat-row { grid-template-columns: 1fr 1fr !important; gap: 2rem !important; }
+          .hero-ctas { flex-direction: column; width: 100%; align-items: stretch; }
+          .hero-ctas a, .hero-ctas button { width: 100%; justify-content: center; }
+          .hero-visualizer > div:nth-child(2) { height: 320px !important; padding: 1rem !important; }
+          .hero-visualizer .float-obj-1 { display: none; }
+        }
+        @media (max-width: 480px) {
+          .stat-row { gap: 1rem !important; }
+          .hero-visualizer > div:nth-child(2) { height: 280px !important; }
+          .hero-visualizer > div:nth-child(2) h3 { font-size: 0.875rem !important; }
+          .hero-visualizer > div:nth-child(2) p { font-size: 0.625rem !important; }
+          .hero-visualizer > div:nth-child(2) > div:last-child { left: 1rem !important; right: 1rem !important; flex-direction: column; gap: 0.5rem; bottom: 1rem !important; }
         }
       `}</style>
     </section>
