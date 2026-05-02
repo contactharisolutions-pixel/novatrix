@@ -1,0 +1,354 @@
+// This is your Prisma schema file — the single source of truth for your DB.
+// All tables from PLATFORM_PLANNING.md are modelled here.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────
+enum UserStatus {
+  active
+  inactive
+  blocked
+}
+
+enum DepositStatus {
+  pending
+  approved
+  rejected
+}
+
+enum PackageStatus {
+  active
+  completed
+}
+
+enum BonusType {
+  direct
+  level
+  trading
+  reward
+  royalty
+}
+
+enum LedgerType {
+  credit
+  debit
+}
+
+enum WithdrawStatus {
+  pending
+  approved
+  rejected
+}
+
+enum TicketStatus {
+  open
+  in_progress
+  closed
+}
+
+enum TicketCategory {
+  withdrawal
+  investment
+  technical
+  other
+}
+
+enum Priority {
+  normal
+  urgent
+}
+
+enum KYCStatus {
+  pending
+  approved
+  rejected
+}
+
+enum AdminRole {
+  superadmin
+  manager
+  support
+}
+
+// ─── User (Member) ────────────────────────────────────────────
+model User {
+  id                    Int          @id @default(autoincrement())
+  user_id               String       @unique @db.VarChar(6)
+  name                  String
+  email                 String       @unique
+  phone                 String
+  password_hash         String
+  transaction_pin_hash  String?
+  referral_code         String       @unique @db.VarChar(12)
+  status                UserStatus   @default(inactive)
+  bep20_wallet          String?
+
+  // Reward system
+  rank                  String       @default("Member")
+  rank_id               Int          @default(0)
+  royalty_rank          String       @default("None")
+  royalty_rank_id       Int          @default(0)
+  
+  // Wallet balances
+  fund_wallet_balance   Decimal      @default(0) @db.Decimal(18, 2)
+  income_wallet_balance Decimal      @default(0) @db.Decimal(18, 2)
+  total_reward_earned   Decimal      @default(0) @db.Decimal(18, 2)
+
+  // Referral tree
+  sponsor_id            Int?
+  sponsor               User?        @relation("Referrals", fields: [sponsor_id], references: [id])
+  referrals             User[]       @relation("Referrals")
+
+  // Relations
+  deposits              Deposit[]
+  packages              TradePackage[]
+  bonuses               Bonus[]         @relation("BonusRecipient")
+  bonuses_given         Bonus[]         @relation("BonusFrom")
+  income_ledger         IncomeLedger[]
+  fund_ledger           FundLedger[]
+  withdrawals           Withdrawal[]
+  tickets               SupportTicket[]
+  ticket_replies        TicketReply[]
+  kyc_document          KycDocument?
+  announcements         Announcement[]  @relation("AnnouncementTarget")
+
+  created_at            DateTime     @default(now())
+  updated_at            DateTime     @updatedAt
+
+  @@map("User")
+}
+
+// ... later in the file ...
+
+// ─── Fund Wallet Ledger ───────────────────────────────────────
+model FundLedger {
+  id             Int        @id @default(autoincrement())
+  user_id        Int
+  user           User       @relation(fields: [user_id], references: [id])
+  type           LedgerType
+  amount         Decimal    @db.Decimal(18, 2)
+  balance_after  Decimal    @db.Decimal(18, 2)
+  reference_type String?    @db.VarChar(50)
+  reference_id   Int?
+  remarks        String?
+  created_at     DateTime   @default(now())
+
+  @@map("FundLedger")
+}
+
+// ─── P2P Fund Transfers ───────────────────────────────────────
+model FundTransfer {
+  id             Int      @id @default(autoincrement())
+  sender_id      Int
+  receiver_id    Int
+  amount         Decimal  @db.Decimal(18, 2)
+  remarks        String?
+  created_at     DateTime @default(now())
+
+  @@map("FundTransfer")
+}
+
+// ─── Deposits ─────────────────────────────────────────────────
+model Deposit {
+  id             Int           @id @default(autoincrement())
+  user_id        Int
+  user           User          @relation(fields: [user_id], references: [id])
+  amount         Decimal       @db.Decimal(18, 2)
+  tx_hash        String?
+  screenshot_url String?
+  status         DepositStatus @default(pending)
+  admin_id       Int?
+  admin          Admin?        @relation(fields: [admin_id], references: [id])
+  approved_at    DateTime?
+  note           String?
+  created_at     DateTime      @default(now())
+
+  @@map("Deposit")
+}
+
+// ─── Trade Packages ───────────────────────────────────────────
+model TradePackage {
+  id                Int             @id @default(autoincrement())
+  user_id           Int
+  user              User            @relation(fields: [user_id], references: [id])
+  amount            Decimal         @db.Decimal(18, 2)
+  daily_roi_percent Decimal         @db.Decimal(5, 2)
+  total_earned      Decimal         @default(0) @db.Decimal(18, 2)
+  max_return        Decimal         @db.Decimal(18, 2)
+  status            PackageStatus   @default(active)
+  started_at        DateTime        @default(now())
+  completed_at      DateTime?
+  roi_distributions RoiDistribution[]
+
+  @@map("TradePackage")
+}
+
+// ─── Daily ROI Distributions ──────────────────────────────────
+model RoiDistribution {
+  id         Int          @id @default(autoincrement())
+  package_id Int
+  package    TradePackage @relation(fields: [package_id], references: [id])
+  user_id    Int
+  amount     Decimal      @db.Decimal(18, 2)
+  pair_name  String       @db.VarChar(20)
+  created_at DateTime     @default(now())
+
+  @@map("RoiDistribution")
+}
+
+// ─── Bonuses ──────────────────────────────────────────────────
+model Bonus {
+  id           Int       @id @default(autoincrement())
+  user_id      Int
+  user         User      @relation("BonusRecipient", fields: [user_id], references: [id])
+  from_user_id Int?
+  from_user    User?     @relation("BonusFrom", fields: [from_user_id], references: [id])
+  type         BonusType
+  level        Int       @default(0)
+  amount       Decimal   @db.Decimal(18, 2)
+  is_matured   Boolean   @default(false)
+  matured_at   DateTime?
+  remarks      String?
+  created_at   DateTime  @default(now())
+
+  @@map("Bonus")
+}
+
+// ─── Income Wallet Ledger ─────────────────────────────────────
+model IncomeLedger {
+  id             Int        @id @default(autoincrement())
+  user_id        Int
+  user           User       @relation(fields: [user_id], references: [id])
+  type           LedgerType
+  amount         Decimal    @db.Decimal(18, 2)
+  balance_after  Decimal    @db.Decimal(18, 2)
+  reference_type String?    @db.VarChar(50)
+  reference_id   Int?
+  remarks        String?
+  created_at     DateTime   @default(now())
+
+  @@map("IncomeLedger")
+}
+
+// ─── Withdrawals ──────────────────────────────────────────────
+model Withdrawal {
+  id             Int            @id @default(autoincrement())
+  user_id        Int
+  user           User           @relation(fields: [user_id], references: [id])
+  amount         Decimal        @db.Decimal(18, 2)
+  fee            Decimal        @db.Decimal(18, 2)
+  net_amount     Decimal        @db.Decimal(18, 2)
+  wallet_address String
+  tx_hash        String?
+  status         WithdrawStatus @default(pending)
+  admin_id       Int?
+  admin          Admin?         @relation(fields: [admin_id], references: [id])
+  processed_at   DateTime?
+  reject_reason  String?
+  created_at     DateTime       @default(now())
+
+  @@map("Withdrawal")
+}
+
+// ─── Support Tickets ──────────────────────────────────────────
+model SupportTicket {
+  id             Int            @id @default(autoincrement())
+  user_id        Int
+  user           User           @relation(fields: [user_id], references: [id])
+  subject        String
+  category       TicketCategory
+  message        String
+  attachment_url String?
+  status         TicketStatus   @default(open)
+  replies        TicketReply[]
+  created_at     DateTime       @default(now())
+  updated_at     DateTime       @updatedAt
+
+  @@map("SupportTicket")
+}
+
+// ─── Ticket Replies ───────────────────────────────────────────
+model TicketReply {
+  id             Int           @id @default(autoincrement())
+  ticket_id      Int
+  ticket         SupportTicket @relation(fields: [ticket_id], references: [id])
+  user_id        Int?
+  user           User?         @relation(fields: [user_id], references: [id])
+  is_admin       Boolean       @default(false)
+  message        String
+  attachment_url String?
+  created_at     DateTime      @default(now())
+
+  @@map("TicketReply")
+}
+
+// ─── Announcements ────────────────────────────────────────────
+model Announcement {
+  id               Int      @id @default(autoincrement())
+  title            String
+  body             String
+  target           String   @default("all")
+  target_user_id   Int?
+  target_user      User?    @relation("AnnouncementTarget", fields: [target_user_id], references: [id])
+  priority         Priority @default(normal)
+  published_at     DateTime?
+  created_by       Int
+  created_by_admin Admin    @relation(fields: [created_by], references: [id])
+  created_at       DateTime @default(now())
+
+  @@map("Announcement")
+}
+
+// ─── KYC Documents ────────────────────────────────────────────
+model KycDocument {
+  id          Int       @id @default(autoincrement())
+  user_id     Int       @unique
+  user        User      @relation(fields: [user_id], references: [id])
+  doc_type    String
+  front_url   String
+  back_url    String?
+  status      KYCStatus @default(pending)
+  reviewed_by Int?
+  reviewer    Admin?    @relation(fields: [reviewed_by], references: [id])
+  review_note String?
+  created_at  DateTime  @default(now())
+
+  @@map("KycDocument")
+}
+
+// ─── Admin Users ──────────────────────────────────────────────
+model Admin {
+  id            Int       @id @default(autoincrement())
+  name          String
+  email         String    @unique
+  password_hash String
+  role          AdminRole @default(support)
+  is_active     Boolean   @default(true)
+  created_at    DateTime  @default(now())
+
+  // Relations
+  deposits_approved     Deposit[]
+  withdrawals_processed Withdrawal[]
+  announcements_created Announcement[]
+  kyc_reviewed          KycDocument[]
+
+  @@map("Admin")
+}
+
+// ─── Platform Settings ────────────────────────────────────────
+model Setting {
+  id         Int      @id @default(autoincrement())
+  key        String   @unique @db.VarChar(100)
+  value      String
+  updated_by Int?
+  updated_at DateTime @updatedAt
+
+  @@map("Setting")
+}

@@ -1,0 +1,181 @@
+/**
+ * ROI Cron Job
+ * Runs daily at midnight UTC via node-cron.
+ * For each active TradePackage: calculates daily ROI, credits Income Wallet,
+ * and marks package as 'completed' when max_return (2×) is reached.
+ */
+
+const cron   = require('node-cron')
+const { PrismaClient } = require('@prisma/client')
+const prisma = new PrismaClient()
+
+/** Credit income wallet and write ledger entry */
+async function creditIncome(tx, userId, amount, remarks, refId) {
+  const user = await tx.user.update({
+    where: { id: userId },
+    data:  { income_wallet_balance: { increment: amount } },
+  })
+  await tx.incomeLedger.create({
+    data: {
+      user_id:        userId,
+      type:           'credit',
+      amount,
+      balance_after:  user.income_wallet_balance,
+      remarks,
+      reference_type: 'roi',
+      reference_id:   refId,
+    },
+  })
+  await tx.bonus.create({
+    data: {
+      user_id: userId,
+      type:    'trading',
+      level:   0,
+      amount,
+    },
+  })
+}
+
+/** Main ROI distribution function */
+async function distributeROI() {
+  console.log(`[ROI Cron] Starting distribution — ${new Date().toISOString()}`)
+
+  const activePackages = await prisma.tradePackage.findMany({
+    where: { status: 'active' },
+  })
+
+  let processed = 0, completed = 0
+
+  for (const pkg of activePackages) {
+    const amount      = parseFloat(pkg.amount)
+    const totalEarned = parseFloat(pkg.total_earned)
+    const DAY_15_END  = new Date('2026-05-20T00:00:00+05:30')
+
+    // Determine daily ROI rate by package tier
+    let dailyRoi = 0.5
+    if (amount >= 5000) {
+      dailyRoi = 2.0
+    } else if (amount >= 500) {
+      dailyRoi = 1.0
+    } else {
+      dailyRoi = 0.5
+    }
+
+    // Member's total investment up to 15 days from launch
+    const [memberInvestRes] = await prisma.$queryRaw`
+      SELECT COALESCE(SUM(amount), 0) as total FROM "TradePackage"
+      WHERE user_id = ${pkg.user_id} AND created_at <= ${DAY_15_END}
+    `
+    const memberInvest15Days = parseFloat(memberInvestRes?.total || 0)
+
+    // Downline total business up to 15 days from launch
+    const [teamInvestRes15Days] = await prisma.$queryRaw`
+      WITH RECURSIVE tree AS (
+        SELECT id FROM "User" WHERE sponsor_id = ${pkg.user_id}
+        UNION ALL
+        SELECT u.id FROM "User" u INNER JOIN tree t ON u.sponsor_id = t.id
+      )
+      SELECT COALESCE(SUM(amount), 0) as total FROM "TradePackage"
+      WHERE user_id IN (SELECT id FROM tree) AND created_at <= ${DAY_15_END}
+    `
+    const teamTotal15Days = parseFloat(teamInvestRes15Days?.total || 0)
+
+    let maxMultiplier = 2
+    if (memberInvest15Days > 0 && teamTotal15Days >= 3 * memberInvest15Days) {
+      maxMultiplier = 3
+    }
+
+    const maxReturn = amount * maxMultiplier
+
+    const roiEarned = parseFloat((amount * dailyRoi / 100).toFixed(2))
+
+    // Cap at maxReturn limit
+    const creditable = Math.min(roiEarned, maxReturn - totalEarned)
+    if (creditable <= 0) {
+      // If already reached max via other bonuses, mark completed
+      if (totalEarned >= maxReturn) {
+        await prisma.tradePackage.update({
+          where: { id: pkg.id },
+          data: { status: 'completed', completed_at: new Date(), max_return: maxReturn, daily_roi_percent: dailyRoi },
+        })
+      }
+      continue
+    }
+
+    const newTotal  = totalEarned + creditable
+    const isDone    = newTotal >= maxReturn
+
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.tradePackage.update({
+          where: { id: pkg.id },
+          data: {
+            total_earned:      newTotal,
+            max_return:        maxReturn,
+            daily_roi_percent: dailyRoi,
+            status:            isDone ? 'completed' : 'active',
+            completed_at:      isDone ? new Date() : null,
+          },
+        })
+        await creditIncome(
+          tx,
+          pkg.user_id,
+          creditable,
+          `Daily ROI ${dailyRoi}% on package #${pkg.id}`,
+          pkg.id
+        )
+        await tx.roiDistribution.create({
+          data: {
+            package_id: pkg.id,
+            user_id:    pkg.user_id,
+            amount:     creditable,
+            pair_name:  pickTradingPair(),
+          },
+        })
+      })
+
+      processed++
+      if (isDone) completed++
+    } catch (err) {
+      console.error(`[ROI Cron] Error for package #${pkg.id}:`, err.message)
+    }
+  }
+
+  console.log(`[ROI Cron] Done. Processed: ${processed}, Completed: ${completed}`)
+}
+
+/** Simulate a trading pair for daily reports */
+function pickTradingPair() {
+  const pairs = ['BTC/USDT', 'ETH/USDT', 'BNB/USDT', 'EUR/GBP', 'USD/JPY', 'GBP/USD', 'SOL/USDT']
+  return pairs[Math.floor(Math.random() * pairs.length)]
+}
+
+const { processRewards, matureRewards } = require('./rewardEngine')
+const { updateRoyaltyRanks, distributeMonthlyRoyalty } = require('./royaltyEngine')
+
+/** Schedule: every day at 12:00 AM IST (only on persistent servers) */
+function startROICron() {
+  // On Vercel (serverless), node-cron does nothing — the process dies after each request.
+  // The daily job is triggered instead via HTTP POST /api/cron/run by Vercel Cron Jobs.
+  // Only activate the in-process scheduler when running on a persistent server (local dev / VPS).
+  if (process.env.VERCEL || process.env.VERCEL_ENV) {
+    console.log('[ROI Cron] Running on Vercel — in-process cron DISABLED. Using Vercel Cron Jobs via /api/cron/run')
+    return
+  }
+
+  cron.schedule('0 0 * * *', async () => {
+    const today = new Date()
+    const day   = today.getDay()
+    const date  = today.getDate()
+
+    if (date === 1) await distributeMonthlyRoyalty()
+    if (day >= 1 && day <= 5) await distributeROI()
+    await processRewards()
+    await updateRoyaltyRanks()
+    await matureRewards()
+  }, { timezone: 'Asia/Kolkata' })
+
+  console.log('[ROI/Reward/Royalty Cron] Scheduled — runs daily at 12:00 AM IST')
+}
+
+module.exports = { startROICron, distributeROI }

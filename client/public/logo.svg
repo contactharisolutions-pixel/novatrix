@@ -1,0 +1,13 @@
+<svg width="340" height="80" viewBox="0 0 340 80" xmlns="http://www.w3.org/2000/svg">
+  <!-- Circle Logo -->
+  <circle cx="40" cy="40" r="36" fill="#00c8ff" />
+  
+  <!-- "N" Left side and diagonal (Purple) -->
+  <path d="M 26 22 L 26 58 L 32 54 L 32 30 L 48 46 L 48 54 Z" fill="#4d2dd6" />
+  
+  <!-- "N" Right side (Darker Blue) -->
+  <path d="M 54 58 L 54 22 L 48 26 L 48 50 L 32 34 L 32 26 Z" fill="#1c75ff" />
+  
+  <!-- Text "NOVATRIX" -->
+  <text x="92" y="52" fill="#ffffff" font-family="Outfit, Arial, sans-serif" font-weight="800" font-size="36" letter-spacing="2">NOVATRIX</text>
+</svg>
