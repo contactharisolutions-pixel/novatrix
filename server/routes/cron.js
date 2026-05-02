@@ -38,9 +38,8 @@ function verifyCronSecret(req, res, next) {
 }
 
 
-// ─── POST /api/cron/run ────────────────────────────────────────
 // Called daily at midnight IST by Vercel Cron or external scheduler
-router.post('/run', verifyCronSecret, async (req, res) => {
+router.all('/run', verifyCronSecret, async (req, res) => {
   const startTime = Date.now()
   const results   = {}
 

@@ -70,7 +70,7 @@ app.use(helmet())
 
 // Dynamic CORS: allow origins from env (comma-separated) or fall back to localhost defaults
 const CORS_ORIGINS = process.env.CORS_ORIGINS
-  ? process.env.CORS_ORIGINS.split(',')
+  ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
   : [
       'http://localhost:3000',
       'http://localhost:3001',

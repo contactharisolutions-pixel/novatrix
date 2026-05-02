@@ -128,7 +128,7 @@ router.get('/business', async (req, res, next) => {
 // ─── GET /api/admin/reports/incomes ─────────────────────────
 // Detailed income reporting for ROI, Direct, Level, Reward, Royalty
 router.get('/incomes', async (req, res, next) => {
-  const type   = req.query.type   || 'roi'
+  const type   = req.query.type   || 'trading'
   const search = req.query.search || ''
   const from   = req.query.from ? new Date(req.query.from) : undefined
   const to     = req.query.to   ? new Date(req.query.to)   : undefined

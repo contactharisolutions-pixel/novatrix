@@ -105,7 +105,7 @@ async function depositApproved({ to, name, amount }) {
         <p style="margin:8px 0 0;font-size:32px;font-weight:800;color:#10B981;">$${(+amount).toFixed(2)}</p>
       </div>
       <p style="margin:20px 0 0;color:#94a3b8;font-size:14px;">Your fund wallet has been topped up. You can now activate a trading package.</p>
-      ${btn('Go to Dashboard', 'https://novatrix.vip/dashboard')}
+      ${btn('Go to Dashboard', `${process.env.CLIENT_URL || 'https://novatrix.vip'}/dashboard`)}
     `),
   })
 }
@@ -120,7 +120,7 @@ async function withdrawalApproved({ to, name, netAmount, txHash, wallet }) {
     html: baseLayout(`
       <h2 style="margin:0 0 8px;color:#10B981;">Withdrawal Processed!</h2>
       <p style="color:#94a3b8;margin:0 0 20px;">Hi <strong style="color:#e2e8f0;">${name}</strong>, your withdrawal has been processed and sent to your wallet.</p>
-      <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:12px;padding:20px;">
+      <div style="background:rgba(108,60,225,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:12px;padding:20px;">
         <div style="display:flex;justify-content:space-between;margin-bottom:12px;">
           <span style="color:#64748b;font-size:13px;">Net Amount</span>
           <span style="color:#10B981;font-weight:700;font-size:18px;">$${(+netAmount).toFixed(2)}</span>
@@ -134,7 +134,7 @@ async function withdrawalApproved({ to, name, netAmount, txHash, wallet }) {
           <p style="margin:0;font-size:11px;color:#94a3b8;font-family:monospace;word-break:break-all;">${wallet}</p>
         </div>
       </div>
-      ${btn('View History', 'https://novatrix.vip/dashboard/withdraw/history')}
+      ${btn('View History', `${process.env.CLIENT_URL || 'https://novatrix.vip'}/dashboard/withdraw/history`)}
     `),
   })
 }
@@ -154,7 +154,7 @@ async function withdrawalRejected({ to, name, amount, reason }) {
         <p style="margin:0;color:#e2e8f0;font-size:14px;">${reason || 'Please contact support for details.'}</p>
       </div>
       <p style="margin:16px 0 0;color:#94a3b8;font-size:14px;">The amount of ${highlight('$' + (+amount).toFixed(2))} has been refunded to your income wallet. You may submit a new request.</p>
-      ${btn('Contact Support', 'https://novatrix.vip/dashboard/tickets')}
+      ${btn('Contact Support', `${process.env.CLIENT_URL || 'https://novatrix.vip'}/dashboard/tickets`)}
     `),
   })
 }
@@ -175,7 +175,7 @@ async function bonusCredited({ to, name, amount, type, level }) {
         <p style="margin:8px 0 0;font-size:32px;font-weight:800;color:#00D4FF;">+$${(+amount).toFixed(2)}</p>
         <p style="margin:8px 0 0;font-size:12px;color:#64748b;">${label}</p>
       </div>
-      ${btn('View Earnings', 'https://novatrix.vip/dashboard/earnings')}
+      ${btn('View Earnings', `${process.env.CLIENT_URL || 'https://novatrix.vip'}/dashboard/earnings`)}
     `),
   })
 }
@@ -199,7 +199,7 @@ async function kycStatusUpdate({ to, name, status, note }) {
            </div>
            <p style="color:#94a3b8;font-size:14px;">Please resubmit your documents addressing the issue above.</p>`
       }
-      ${btn(approved ? 'Go to Dashboard' : 'Resubmit KYC', `https://novatrix.vip/dashboard/${approved ? '' : 'kyc'}`)}
+      ${btn(approved ? 'Go to Dashboard' : 'Resubmit KYC', `${process.env.CLIENT_URL || 'https://novatrix.vip'}/dashboard/${approved ? '' : 'kyc'}`)}
     `),
   })
 }
