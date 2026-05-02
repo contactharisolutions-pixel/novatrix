@@ -155,7 +155,7 @@ export default function HeroSection() {
   }
 
   return (
-    <section id="home" style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', overflow: 'hidden', paddingTop: '6rem', paddingBottom: '4rem', width: '100%' }}>
+    <section id="home" className="hero-section">
       {/* Dynamic Backgrounds */}
       <AICanvas />
       <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 50% 50%, rgba(6,11,23,0.4) 0%, var(--navy) 100%)', zIndex: 1 }} />
@@ -165,29 +165,26 @@ export default function HeroSection() {
       {/* Abstract Grid */}
       <div style={{ position: 'absolute', inset: 0, zIndex: 1, backgroundImage: 'linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)', backgroundSize: '50px 50px', transform: 'perspective(500px) rotateX(60deg) translateY(-100px) translateZ(-200px)', opacity: 0.3 }} />
 
-      <div className="container" style={{ position: 'relative', zIndex: 10, maxWidth: 1400, width: '100%' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4rem', alignItems: 'center' }} className="hero-grid">
+      <div className="container">
+        <div className="hero-grid">
           
           {/* Left Content */}
-          <div style={{ paddingRight: '2rem' }} className="hero-content">
+          <div className="hero-content">
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.625rem', background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.2)', borderRadius: 100, padding: '0.5rem 1.25rem', marginBottom: '2rem', backdropFilter: 'blur(10px)' }} className="slide-in-left">
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#00d4ff', boxShadow: '0 0 10px #00d4ff', animation: 'pulse 1.5s infinite' }} />
               <span style={{ fontSize: '0.8125rem', fontWeight: 800, color: 'var(--cyan)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Novatrix AI System v2.0 Online</span>
             </div>
 
-            <h1 style={{ fontSize: 'clamp(2rem, 8vw, 4.5rem)', fontWeight: 900, fontFamily: 'Outfit, sans-serif', lineHeight: 1.1, marginBottom: '1.5rem', color: '#fff', letterSpacing: '-0.02em', wordBreak: 'break-word' }} className="slide-in-up">
+            <h1 className="hero-title slide-in-up">
               The Future of <br />
-              <span style={{ background: 'linear-gradient(135deg, var(--cyan), var(--purple))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', display: 'inline-block', position: 'relative', whiteSpace: 'normal' }}>
-                Algorithmic Trading
-                <div style={{ position: 'absolute', bottom: 5, left: 0, width: '100%', height: 8, background: 'var(--cyan)', opacity: 0.2, filter: 'blur(4px)' }} />
-              </span>
+              <span>Algorithmic Trading</span>
             </h1>
 
-            <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '2.5rem', maxWidth: 540 }} className="fade-in delay-1 hero-subtitle">
+            <p className="fade-in delay-1 hero-subtitle">
               Harness the power of autonomous AI robotics to navigate Crypto and Forex markets. Zero emotion, 100% precision. Institutional-grade quantitative strategies now available to everyone.
             </p>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.25rem', marginBottom: '3rem', justifyContent: 'flex-start' }} className="fade-in delay-2 hero-ctas">
+            <div className="fade-in delay-2 hero-ctas">
               <Link to="/register" className="btn-primary" style={{ padding: '1rem 2.5rem', fontSize: '1.0625rem', height: 56, boxShadow: '0 0 20px rgba(0,212,255,0.3)' }}>
                 Deploy Capital <ArrowRight size={20} />
               </Link>
@@ -296,19 +293,15 @@ export default function HeroSection() {
           0%, 100% { transform: translateY(0); }
           50% { transform: translateY(-20px); }
         }
+        
         @media (max-width: 1024px) {
-          .hero-grid { grid-template-columns: 1fr !important; gap: 3rem !important; }
-          .hero-content { padding-right: 0 !important; text-align: center; display: flex; flex-direction: column; align-items: center; }
-          .hero-content p { margin: 0 auto 2.5rem auto !important; padding: 0 1rem; }
-          .hero-ctas { justify-content: center !important; }
           .stat-row { justify-content: center; text-align: center; }
           .hero-visualizer { height: 400px !important; }
         }
         @media (max-width: 640px) {
           .stat-row { grid-template-columns: 1fr 1fr !important; gap: 2rem !important; }
-          .hero-ctas { flex-direction: column; width: 100%; align-items: stretch; }
-          .hero-ctas a, .hero-ctas button { width: 100%; justify-content: center; }
-          .hero-visualizer > div:nth-child(2) { height: 320px !important; padding: 1rem !important; }
+          .hero-visualizer { height: 320px !important; }
+          .hero-visualizer > div:nth-child(2) { height: 320px !important; padding: 1.5rem !important; }
           .hero-visualizer .float-obj-1 { display: none; }
         }
         @media (max-width: 480px) {
