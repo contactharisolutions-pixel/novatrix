@@ -2,12 +2,9 @@ const router            = require('express').Router()
 const multer            = require('multer')
 const path              = require('path')
 const authenticateAdmin = require('../../middleware/authenticateAdmin')
-const { PrismaClient }  = require('@prisma/client')
-
 const { uploadToSupabase } = require('../../lib/supabase')
 
-const prisma = new PrismaClient()
-
+const prisma = require('../../lib/prisma')
 // Multer for QR Upload
 const upload = multer({ storage: multer.memoryStorage() })
 

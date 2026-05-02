@@ -1,7 +1,5 @@
-const { PrismaClient } = require('@prisma/client')
 const { getLegBusiness } = require('./businessUtils')
-const prisma = new PrismaClient()
-
+const prisma = require('../lib/prisma')
 /**
  * Royalty Ranks Configuration
  * Based on 40%-30%-30% Leg Distribution

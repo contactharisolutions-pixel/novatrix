@@ -6,9 +6,7 @@
  */
 
 const cron   = require('node-cron')
-const { PrismaClient } = require('@prisma/client')
-const prisma = new PrismaClient()
-
+const prisma = require('../lib/prisma')
 /** Credit income wallet and write ledger entry */
 async function creditIncome(tx, userId, amount, remarks, refId) {
   const user = await tx.user.update({

@@ -11,10 +11,7 @@
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') })
 
 const bcrypt = require('bcryptjs')
-const { PrismaClient } = require('@prisma/client')
-
-const prisma = new PrismaClient()
-
+const prisma = require('../lib/prisma')
 const ADMIN_NAME     = process.env.SEED_ADMIN_NAME  || 'Super Admin'
 const ADMIN_EMAIL    = process.env.SEED_ADMIN_EMAIL  || 'admin@novatrix.vip'
 const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASS   || 'Admin@Novatrix2024!'

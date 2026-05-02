@@ -1,9 +1,7 @@
 const router            = require('express').Router()
 const jwt               = require('jsonwebtoken')
 const authenticateAdmin = require('../../middleware/authenticateAdmin')
-const { PrismaClient }  = require('@prisma/client')
-
-const prisma = new PrismaClient()
+const prisma = require('../../lib/prisma')
 router.use(authenticateAdmin)
 
 const signToken = (payload) =>

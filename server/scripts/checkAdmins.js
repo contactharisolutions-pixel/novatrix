@@ -1,6 +1,4 @@
-const { PrismaClient } = require('@prisma/client')
-const prisma = new PrismaClient()
-
+const prisma = require('../lib/prisma')
 async function check() {
   const admins = await prisma.admin.findMany()
   console.log('Admins found:', admins.length)

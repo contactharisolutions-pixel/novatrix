@@ -2,13 +2,11 @@ const router       = require('express').Router()
 const multer       = require('multer')
 const path         = require('path')
 const authenticate = require('../middleware/authenticate')
-const { PrismaClient } = require('@prisma/client')
 const { triggerDirectAndLevelBonus } = require('../services/bonusEngine')
 
 const { uploadToSupabase } = require('../lib/supabase')
 
-const prisma = new PrismaClient()
-
+const prisma = require('../lib/prisma')
 // Multer: use memory storage for direct upload to Supabase
 const upload = multer({
   storage: multer.memoryStorage(),

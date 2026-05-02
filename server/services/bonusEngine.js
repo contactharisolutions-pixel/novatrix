@@ -6,9 +6,7 @@
  * Level 1: 5%, Level 2: 3%, Level 3: 2%, Level 4-10: 1% each
  */
 
-const { PrismaClient } = require('@prisma/client')
-const prisma = new PrismaClient()
-
+const prisma = require('../lib/prisma')
 // Default commission rates
 const DEFAULT_RATES = {
   direct: 5.0, // Fixed 5% direct referral bonus

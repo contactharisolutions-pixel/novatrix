@@ -1,8 +1,5 @@
 const router = require('express').Router()
-const { PrismaClient } = require('@prisma/client')
-
-const prisma = new PrismaClient()
-
+const prisma = require('../lib/prisma')
 // ─── GET /api/public/settings ────────────────────────────────
 // Publicly accessible settings like deposit address/QR
 router.get('/settings', async (req, res, next) => {

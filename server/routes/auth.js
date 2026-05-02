@@ -2,10 +2,7 @@ const router       = require('express').Router()
 const bcrypt       = require('bcryptjs')
 const jwt          = require('jsonwebtoken')
 const { body, validationResult } = require('express-validator')
-const { PrismaClient } = require('@prisma/client')
-
-const prisma = new PrismaClient()
-
+const prisma = require('../lib/prisma')
 /** Generate a unique 6-digit user_id */
 async function generateUserId() {
   let id, exists = true

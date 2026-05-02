@@ -1,6 +1,4 @@
-const { PrismaClient } = require('@prisma/client')
-const prisma = new PrismaClient()
-
+const prisma = require('../lib/prisma')
 /**
  * Calculates business for each leg of a user
  * Returns leg1 (strongest), leg2 (2nd strongest), and leg3 (rest)

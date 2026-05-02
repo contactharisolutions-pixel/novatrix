@@ -1,9 +1,7 @@
 const router       = require('express').Router()
 const bcrypt       = require('bcryptjs')
 const authenticate = require('../middleware/authenticate')
-const { PrismaClient } = require('@prisma/client')
-
-const prisma = new PrismaClient()
+const prisma = require('../lib/prisma')
 router.use(authenticate)
 
 /** Verify the user's transaction PIN */

@@ -1,9 +1,8 @@
 const router            = require('express').Router()
 const authenticateAdmin = require('../../middleware/authenticateAdmin')
-const { PrismaClient }  = require('@prisma/client')
 const email             = require('../../services/emailService')
 
-const prisma = new PrismaClient()
+const prisma = require('../../lib/prisma')
 router.use(authenticateAdmin)
 
 // ─── GET /api/admin/deposits ──────────────────────────────────

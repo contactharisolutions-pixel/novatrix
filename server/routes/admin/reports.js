@@ -1,10 +1,9 @@
 const XLSX              = require('xlsx')
 const router            = require('express').Router()
 const authenticateAdmin = require('../../middleware/authenticateAdmin')
-const { PrismaClient }  = require('@prisma/client')
 const { getLegBusiness } = require('../../services/businessUtils')
 
-const prisma = new PrismaClient()
+const prisma = require('../../lib/prisma')
 router.use(authenticateAdmin)
 
 // ─── GET /api/admin/reports/csv ───────────────────────────────
