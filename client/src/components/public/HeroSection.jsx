@@ -175,15 +175,15 @@ export default function HeroSection() {
               <span style={{ fontSize: '0.8125rem', fontWeight: 800, color: 'var(--cyan)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Novatrix AI System v2.0 Online</span>
             </div>
 
-            <h1 style={{ fontSize: 'clamp(2.5rem, 8vw, 4.5rem)', fontWeight: 900, fontFamily: 'Outfit, sans-serif', lineHeight: 1.1, marginBottom: '1.5rem', color: '#fff', letterSpacing: '-0.02em' }} className="slide-in-up">
+            <h1 style={{ fontSize: 'clamp(2rem, 8vw, 4.5rem)', fontWeight: 900, fontFamily: 'Outfit, sans-serif', lineHeight: 1.1, marginBottom: '1.5rem', color: '#fff', letterSpacing: '-0.02em', wordBreak: 'break-word' }} className="slide-in-up">
               The Future of <br />
-              <span style={{ background: 'linear-gradient(135deg, var(--cyan), var(--purple))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', display: 'inline-block', position: 'relative' }}>
+              <span style={{ background: 'linear-gradient(135deg, var(--cyan), var(--purple))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', display: 'inline-block', position: 'relative', whiteSpace: 'normal' }}>
                 Algorithmic Trading
                 <div style={{ position: 'absolute', bottom: 5, left: 0, width: '100%', height: 8, background: 'var(--cyan)', opacity: 0.2, filter: 'blur(4px)' }} />
               </span>
             </h1>
 
-            <p style={{ fontSize: '1.125rem', color: 'var(--text-secondary)', lineHeight: 1.8, marginBottom: '2.5rem', maxWidth: 540 }} className="fade-in delay-1">
+            <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '2.5rem', maxWidth: 540 }} className="fade-in delay-1 hero-subtitle">
               Harness the power of autonomous AI robotics to navigate Crypto and Forex markets. Zero emotion, 100% precision. Institutional-grade quantitative strategies now available to everyone.
             </p>
 
@@ -299,7 +299,7 @@ export default function HeroSection() {
         @media (max-width: 1024px) {
           .hero-grid { grid-template-columns: 1fr !important; gap: 3rem !important; }
           .hero-content { padding-right: 0 !important; text-align: center; display: flex; flex-direction: column; align-items: center; }
-          .hero-content p { margin: 0 auto 2.5rem auto !important; }
+          .hero-content p { margin: 0 auto 2.5rem auto !important; padding: 0 1rem; }
           .hero-ctas { justify-content: center !important; }
           .stat-row { justify-content: center; text-align: center; }
           .hero-visualizer { height: 400px !important; }
