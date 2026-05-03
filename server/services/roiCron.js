@@ -7,6 +7,8 @@
 
 const cron   = require('node-cron')
 const prisma = require('../lib/prisma')
+const { triggerROIMatchingBonus } = require('./bonusEngine')
+
 /** Credit income wallet and write ledger entry */
 async function creditIncome(tx, userId, amount, remarks, refId) {
   const user = await tx.user.update({
@@ -47,26 +49,43 @@ async function distributeROI() {
   for (const pkg of activePackages) {
     const amount      = parseFloat(pkg.amount)
     const totalEarned = parseFloat(pkg.total_earned)
-    const DAY_15_END  = new Date('2026-05-20T00:00:00+05:30')
+    const PLATFORM_LAUNCH = new Date('2026-05-04T00:00:00+05:30')
+    const pkgStart        = new Date(pkg.started_at)
+    
+    // For packages bought before launch, their activation is effectively on launch day
+    const effectiveStart  = pkgStart < PLATFORM_LAUNCH ? PLATFORM_LAUNCH : pkgStart
+    
+    const diffTime = effectiveStart.getTime() - PLATFORM_LAUNCH.getTime()
+    // Diff in days relative to platform launch
+    const diffDays = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)))
 
-    // Determine daily ROI rate by package tier
+    // Determine daily ROI rate by package activation date
     let dailyRoi = 0.5
-    if (amount >= 5000) {
+    if (diffDays <= 30) {
       dailyRoi = 2.0
-    } else if (amount >= 500) {
+    } else if (diffDays <= 120) { // next 90 days (30 + 90)
       dailyRoi = 1.0
-    } else {
+    } else { // after 120 days
       dailyRoi = 0.5
     }
 
-    // Member's total investment up to 15 days from launch
+    // Get member's first activation date to calculate their 15-day window
+    const [firstPkg] = await prisma.$queryRaw`
+      SELECT started_at FROM "TradePackage"
+      WHERE user_id = ${pkg.user_id}
+      ORDER BY started_at ASC LIMIT 1
+    `
+    const memberActivationDate = firstPkg ? new Date(firstPkg.started_at) : pkgStart
+    const limit15Days = new Date(memberActivationDate.getTime() + 15 * 24 * 60 * 60 * 1000)
+
+    // Member's total investment up to 15 days from their activation date
     const [memberInvestRes] = await prisma.$queryRaw`
       SELECT COALESCE(SUM(amount), 0) as total FROM "TradePackage"
-      WHERE user_id = ${pkg.user_id} AND created_at <= ${DAY_15_END}
+      WHERE user_id = ${pkg.user_id} AND started_at <= ${limit15Days}
     `
     const memberInvest15Days = parseFloat(memberInvestRes?.total || 0)
 
-    // Downline total business up to 15 days from launch
+    // Downline total business up to 15 days from member's activation date
     const [teamInvestRes15Days] = await prisma.$queryRaw`
       WITH RECURSIVE tree AS (
         SELECT id FROM "User" WHERE sponsor_id = ${pkg.user_id}
@@ -74,7 +93,7 @@ async function distributeROI() {
         SELECT u.id FROM "User" u INNER JOIN tree t ON u.sponsor_id = t.id
       )
       SELECT COALESCE(SUM(amount), 0) as total FROM "TradePackage"
-      WHERE user_id IN (SELECT id FROM tree) AND created_at <= ${DAY_15_END}
+      WHERE user_id IN (SELECT id FROM tree) AND started_at <= ${limit15Days}
     `
     const teamTotal15Days = parseFloat(teamInvestRes15Days?.total || 0)
 
@@ -130,6 +149,10 @@ async function distributeROI() {
             pair_name:  pickTradingPair(),
           },
         })
+
+        // Trigger 15-Level ROI Matching Bonus based on the generated ROI
+        const userObj = await tx.user.findUnique({ where: { id: pkg.user_id }, select: { user_id: true } })
+        await triggerROIMatchingBonus(tx, pkg.user_id, userObj?.user_id || 'Member', creditable)
       })
 
       processed++

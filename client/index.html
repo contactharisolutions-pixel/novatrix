@@ -3,24 +3,44 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Robust mobile viewport: no forced scaling, respects user zoom -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#080d1a" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
     <!-- SEO -->
-    <title>Novatrix — Smart Crypto & Forex Investment Platform</title>
-    <meta name="description" content="Grow your capital through intelligent Crypto & Forex trading strategies. Join 50,000+ members earning daily returns on Novatrix.vip." />
+    <title>Novatrix — Smart Crypto &amp; Forex Investment Platform</title>
+    <meta name="description" content="Grow your capital through intelligent Crypto &amp; Forex trading strategies. Join 50,000+ members earning daily returns on Novatrix.vip." />
     <meta name="keywords" content="crypto investment, forex trading, daily returns, referral income, USDT investment platform" />
     <meta name="author" content="Novatrix" />
     <link rel="canonical" href="https://novatrix.vip" />
 
     <!-- Open Graph -->
-    <meta property="og:title" content="Novatrix — Smart Crypto & Forex Investment Platform" />
+    <meta property="og:title" content="Novatrix — Smart Crypto &amp; Forex Investment Platform" />
     <meta property="og:description" content="Earn daily returns through professional crypto and forex trading. Up to 1.2% daily ROI." />
     <meta property="og:url" content="https://novatrix.vip" />
     <meta property="og:type" content="website" />
 
-    <!-- Preconnect Google Fonts -->
+    <!-- DNS prefetch for third-party scripts -->
+    <link rel="dns-prefetch" href="https://s3.tradingview.com" />
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+
+    <!-- Preconnect to font origins (eliminates round-trip latency) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- Non-render-blocking font load -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" />
+    </noscript>
   </head>
   <body>
     <div id="root"></div>

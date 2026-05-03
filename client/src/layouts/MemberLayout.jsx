@@ -73,6 +73,7 @@ const NAV_GROUPS = [
 
 function SidebarContent({ onClose = () => {} }) {
   const { user, logout } = useAuthStore()
+  const [openGroup, setOpenGroup] = useState(null)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--sidebar-bg)' }}>
@@ -93,40 +94,42 @@ function SidebarContent({ onClose = () => {} }) {
       <div style={{ padding: '1.25rem' }}>
         <div style={{
           padding: '1rem',
-          borderRadius: 'var(--radius-md)',
-          background: 'rgba(0,212,255,0.04)',
-          border: '1px solid rgba(0,212,255,0.1)',
+          borderRadius: '16px',
+          background: 'rgba(0, 0, 0, 0.2)',
+          border: '1px solid rgba(255, 255, 255, 0.05)',
           display: 'flex',
           alignItems: 'center',
-          gap: '0.875rem',
+          gap: '1rem',
         }}>
           <div style={{
-            width: 44, height: 44, borderRadius: '50%',
-            background: 'linear-gradient(135deg, var(--cyan), var(--purple))',
+            width: 52, height: 52, borderRadius: '50%',
+            background: 'linear-gradient(135deg, #00d4ff, #7c3aed)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '1.125rem', fontWeight: 800, color: '#fff',
-            boxShadow: '0 4px 12px rgba(0,212,255,0.3)',
+            fontSize: '1.5rem', fontWeight: 800, color: '#fff',
+            boxShadow: '0 0 20px rgba(0, 212, 255, 0.2)',
+            flexShrink: 0,
           }}>
             {user?.name?.[0]?.toUpperCase() || 'M'}
           </div>
-          <div style={{ minWidth: 0 }}>
-            <p style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+            <p style={{ fontSize: '1rem', fontWeight: 800, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1 }}>
               {user?.name || 'Investor'}
             </p>
-            <p style={{ fontSize: '0.75rem', color: 'var(--cyan)', fontFamily: 'JetBrains Mono, monospace', marginTop: '0.125rem', fontWeight: 500 }}>
+            <p style={{ fontSize: '0.875rem', color: '#00d4ff', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600, lineHeight: 1 }}>
               #{user?.user_id}
             </p>
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: '0.375rem',
-              marginTop: '0.5rem', padding: '0.2rem 0.625rem',
-              borderRadius: '6px', 
+              marginTop: '0.2rem', padding: '0.25rem 0.625rem',
+              borderRadius: '8px', 
               background: user?.status === 'active' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
               border: user?.status === 'active' ? '1px solid rgba(16,185,129,0.2)' : '1px solid rgba(239,68,68,0.2)',
-              color: user?.status === 'active' ? 'var(--green)' : 'var(--red)',
-              fontSize: '0.625rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em'
+              color: user?.status === 'active' ? '#10b981' : '#ef4444',
+              fontSize: '0.65rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em',
+              alignSelf: 'flex-start'
             }}>
-              <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'currentColor', boxShadow: user?.status === 'active' ? '0 0 8px var(--green)' : 'none' }} />
-              {user?.status || 'Inactive'}
+              <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'currentColor', boxShadow: '0 0 8px currentColor' }} />
+              {user?.status || 'INACTIVE'}
             </div>
           </div>
         </div>
@@ -134,28 +137,51 @@ function SidebarContent({ onClose = () => {} }) {
 
       {/* Nav */}
       <nav style={{ flex: 1, overflowY: 'auto', padding: '0.5rem 0.875rem' }}>
-        {NAV_GROUPS.map(({ label, items }) => (
-          <div key={label || '_top'} style={{ marginBottom: '1.25rem' }}>
-            {label && (
-              <p className="nav-group-label" style={{ marginBottom: '0.375rem' }}>{label}</p>
-            )}
-            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-              {items.map(({ to, icon: Icon, label: itemLabel }) => (
-                <li key={to}>
-                  <NavLink
-                    to={to}
-                    end={to === '/dashboard' || to === '/dashboard/earnings'}
-                    onClick={onClose}
-                    className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                  >
-                    <Icon size={18} />
-                    <span>{itemLabel}</span>
-                  </NavLink>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
+        {NAV_GROUPS.map(({ label, items }) => {
+          const isOpen = openGroup === label;
+          return (
+            <div key={label || '_top'} style={{ marginBottom: label ? '0.5rem' : '1.25rem' }}>
+              {label ? (
+                <button 
+                  onClick={() => setOpenGroup(isOpen ? null : label)}
+                  style={{ 
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
+                    width: '100%', background: isOpen ? 'rgba(255,255,255,0.03)' : 'transparent', border: 'none', padding: '0.75rem 1rem', 
+                    cursor: 'pointer', color: isOpen ? '#fff' : 'var(--text-faint)', 
+                    fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em',
+                    borderRadius: '8px', transition: 'all 0.2s', marginBottom: isOpen ? '0.25rem' : '0'
+                  }}
+                  onMouseEnter={(e) => { if (!isOpen) e.currentTarget.style.color = '#fff'; }}
+                  onMouseLeave={(e) => { if (!isOpen) e.currentTarget.style.color = 'var(--text-faint)'; }}
+                >
+                  <span>{label}</span>
+                  <ChevronDown size={14} style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
+                </button>
+              ) : null}
+              
+              <div style={{ 
+                display: (!label || isOpen) ? 'block' : 'none',
+                paddingLeft: label ? '0.5rem' : '0'
+              }}>
+                <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  {items.map(({ to, icon: Icon, label: itemLabel }) => (
+                    <li key={to}>
+                      <NavLink
+                        to={to}
+                        end={to === '/dashboard' || to === '/dashboard/earnings'}
+                        onClick={onClose}
+                        className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                      >
+                        <Icon size={18} />
+                        <span>{itemLabel}</span>
+                      </NavLink>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )
+        })}
       </nav>
 
       {/* Logout */}

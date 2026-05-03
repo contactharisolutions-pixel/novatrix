@@ -34,7 +34,7 @@ async function creditIncome(tx, userId, amount, remarks, refType = null, refId =
 }
 
 // ─── Shared launch-window constants ──────────────────────────
-const DAY_15_END = new Date('2026-05-20T00:00:00+05:30')
+const DAY_15_END = new Date('2026-05-17T00:00:00+05:30')
 
 // ─── POST /api/trades/activate-for-other ──────────────────────
 router.post('/activate-for-other', async (req, res, next) => {
@@ -71,7 +71,7 @@ router.post('/activate-for-other', async (req, res, next) => {
     const today = new Date()
     const [targetInvestRes] = await prisma.$queryRaw`
       SELECT COALESCE(SUM(amount), 0) as total FROM "TradePackage"
-      WHERE user_id = ${target.id} AND created_at <= ${DAY_15_END}
+      WHERE user_id = ${target.id} AND started_at <= ${DAY_15_END}
     `
     let targetInvest15Days = parseFloat(targetInvestRes?.total || 0)
     if (today <= DAY_15_END) {
@@ -86,7 +86,7 @@ router.post('/activate-for-other', async (req, res, next) => {
         SELECT u.id FROM "User" u INNER JOIN tree t ON u.sponsor_id = t.id
       )
       SELECT COALESCE(SUM(amount), 0) as total FROM "TradePackage"
-      WHERE user_id IN (SELECT id FROM tree) AND created_at <= ${DAY_15_END}
+      WHERE user_id IN (SELECT id FROM tree) AND started_at <= ${DAY_15_END}
     `
     const teamTotal15Days = parseFloat(teamInvestRes15Days?.total || 0)
 
@@ -179,7 +179,7 @@ router.post('/invest', async (req, res, next) => {
     const today = new Date()
     const [memberInvestRes] = await prisma.$queryRaw`
       SELECT COALESCE(SUM(amount), 0) as total FROM "TradePackage"
-      WHERE user_id = ${req.user.id} AND created_at <= ${DAY_15_END}
+      WHERE user_id = ${req.user.id} AND started_at <= ${DAY_15_END}
     `
     let memberInvest15Days = parseFloat(memberInvestRes?.total || 0)
     if (today <= DAY_15_END) {
@@ -194,7 +194,7 @@ router.post('/invest', async (req, res, next) => {
         SELECT u.id FROM "User" u INNER JOIN tree t ON u.sponsor_id = t.id
       )
       SELECT COALESCE(SUM(amount), 0) as total FROM "TradePackage"
-      WHERE user_id IN (SELECT id FROM tree) AND created_at <= ${DAY_15_END}
+      WHERE user_id IN (SELECT id FROM tree) AND started_at <= ${DAY_15_END}
     `
     const teamTotal15Days = parseFloat(teamInvestRes15Days?.total || 0)
 
