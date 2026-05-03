@@ -93,6 +93,21 @@ export default function MembersPage() {
     finally { setActLoading(false) }
   }
 
+  const activatePackage = async (e) => {
+    e.preventDefault()
+    const fd = new FormData(e.target)
+    setActLoading(true)
+    try {
+      await adminApi.post(`/members/${modal.member.id}/activate-package`, {
+        amount: parseFloat(fd.get('amount'))
+      })
+      toast.success('Member forcefully activated with trading package.')
+      setModal(null)
+      load(page)
+    } catch (err) { toast.error(err?.response?.data?.error || 'Activation failed') }
+    finally { setActLoading(false) }
+  }
+
   const cols = [
     ...COLS,
     {
@@ -110,6 +125,9 @@ export default function MembersPage() {
           </button>
           <button onClick={() => setModal({ type: 'balance', member: row })} className="btn-primary" style={{ padding: '0.4rem', minWidth: 0 }} title="Credit Wallet">
              <DollarSign size={14} />
+          </button>
+          <button onClick={() => setModal({ type: 'activate', member: row })} className="btn-primary" style={{ padding: '0.4rem', minWidth: 0, background: 'var(--green-glow)', borderColor: 'var(--green)', color: 'var(--green)' }} title="Force Activate Trade Package">
+             <Activity size={14} />
           </button>
         </div>
       ),
@@ -251,6 +269,26 @@ export default function MembersPage() {
             </div>
             <button type="submit" disabled={actLoading} className="btn-primary" style={{ height: 48 }}>
               {actLoading ? <Loader2 size={18} className="animate-spin" /> : 'EXECUTE PROTOCOL'}
+            </button>
+          </form>
+        </AdminModal>
+      )}
+
+      {/* Force Activate Modal */}
+      {modal?.type === 'activate' && (
+        <AdminModal title={`Force Activate Trade Package — ${modal.member.name}`} onClose={() => setModal(null)}>
+          <form onSubmit={activatePackage} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+              <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                This action will automatically allot trading funds to the user and immediately deduct them to activate a new Trade Package. The user's status will also be set to Active.
+              </p>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-faint)', textTransform: 'uppercase' }}>PACKAGE AMOUNT ($)</label>
+              <input name="amount" type="number" step="10" min="20" max="5000" placeholder="Min 20, Max 5000" className="input" required />
+            </div>
+            <button type="submit" disabled={actLoading} className="btn-primary" style={{ height: 48, background: 'var(--green)', color: '#000', borderColor: 'var(--green)' }}>
+              {actLoading ? <Loader2 size={18} className="animate-spin" /> : 'EXECUTE ACTIVATION'}
             </button>
           </form>
         </AdminModal>

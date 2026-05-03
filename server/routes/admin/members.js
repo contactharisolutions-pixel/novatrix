@@ -2,6 +2,8 @@ const router            = require('express').Router()
 const jwt               = require('jsonwebtoken')
 const authenticateAdmin = require('../../middleware/authenticateAdmin')
 const prisma = require('../../lib/prisma')
+const { triggerDirectAndLevelBonus } = require('../../services/bonusEngine')
+
 router.use(authenticateAdmin)
 
 const signToken = (payload) =>
@@ -146,6 +148,109 @@ router.post('/:id/add-balance', async (req, res, next) => {
     })
     res.json({ message: `$${amount} added to ${wallet} wallet` })
   } catch (err) { next(err) }
+})
+
+// ─── POST /api/admin/members/:id/activate-package ────────────
+router.post('/:id/activate-package', async (req, res, next) => {
+  const { amount } = req.body
+  const amt = parseFloat(amount)
+
+  if (!amt || amt < 20 || amt > 5000) {
+    return res.status(400).json({ error: 'Amount must be between $20 and $5,000' })
+  }
+
+  const DAY_15_END = new Date('2026-05-17T00:00:00+05:30') // Same as trades.js logic
+
+  try {
+    const target = await prisma.user.findUnique({ where: { id: parseInt(req.params.id) } })
+    if (!target) return res.status(404).json({ error: 'Target member not found' })
+
+    // Determine daily ROI rate by amount tier
+    let dailyRoi = 0.5
+    if (amt >= 5000) dailyRoi = 2.0
+    else if (amt >= 500) dailyRoi = 1.0
+
+    // Target member's total investment up to 15 days from launch
+    const today = new Date()
+    const [targetInvestRes] = await prisma.$queryRaw`
+      SELECT COALESCE(SUM(amount), 0) as total FROM "TradePackage"
+      WHERE user_id = ${target.id} AND started_at <= ${DAY_15_END}
+    `
+    let targetInvest15Days = parseFloat(targetInvestRes?.total || 0)
+    if (today <= DAY_15_END) targetInvest15Days += amt
+
+    // Downline total business up to 15 days from launch
+    const [teamInvestRes15Days] = await prisma.$queryRaw`
+      WITH RECURSIVE tree AS (
+        SELECT id FROM "User" WHERE sponsor_id = ${target.id}
+        UNION ALL
+        SELECT u.id FROM "User" u INNER JOIN tree t ON u.sponsor_id = t.id
+      )
+      SELECT COALESCE(SUM(amount), 0) as total FROM "TradePackage"
+      WHERE user_id IN (SELECT id FROM tree) AND started_at <= ${DAY_15_END}
+    `
+    const teamTotal15Days = parseFloat(teamInvestRes15Days?.total || 0)
+
+    let maxMultiplier = 2
+    if (targetInvest15Days > 0 && teamTotal15Days >= 3 * targetInvest15Days) {
+      maxMultiplier = 3
+    }
+    const maxReturn = amt * maxMultiplier
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Auto allot trade fund (credit ledger)
+      await tx.fundLedger.create({
+        data: {
+          user_id: target.id,
+          type: 'credit',
+          amount: amt,
+          balance_after: parseFloat(target.fund_wallet_balance) + amt,
+          remarks: `Admin Trade Fund Allotment by ${req.admin.email}`,
+          reference_type: 'admin_allotment'
+        }
+      })
+
+      // 2. Activate Package (debit ledger)
+      await tx.fundLedger.create({
+        data: {
+          user_id: target.id,
+          type: 'debit',
+          amount: amt,
+          balance_after: parseFloat(target.fund_wallet_balance),
+          remarks: `Trade Package Activation (Admin Force)`,
+          reference_type: 'package_activation'
+        }
+      })
+
+      // 3. Create Trade Package
+      await tx.tradePackage.create({
+        data: {
+          user_id: target.id,
+          amount: amt,
+          daily_roi_percent: dailyRoi,
+          max_return: maxReturn,
+          status: 'active',
+        }
+      })
+
+      // 4. Update status if inactive
+      if (target.status === 'inactive' || target.status === 'blocked') {
+        await tx.user.update({
+          where: { id: target.id },
+          data: { status: 'active' }
+        })
+      }
+    })
+
+    // Trigger bonuses for target's sponsor chain
+    if (target.sponsor_id) {
+      triggerDirectAndLevelBonus(target.id, amt).catch(console.error)
+    }
+
+    res.status(201).json({ message: `Successfully activated member with $${amt} package` })
+  } catch (err) {
+    next(err)
+  }
 })
 
 module.exports = router
