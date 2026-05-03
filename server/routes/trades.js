@@ -53,7 +53,7 @@ router.post('/activate-for-other', async (req, res, next) => {
     if (parseFloat(sender.fund_wallet_balance) < amt) return res.status(400).json({ error: 'Insufficient fund wallet balance' })
 
     const minAmount = 20
-    const maxAmount = 100000
+    const maxAmount = 5000
     if (amt < minAmount) return res.status(400).json({ error: `Minimum investment is $${minAmount}` })
     if (amt > maxAmount) return res.status(400).json({ error: `Maximum investment is $${maxAmount.toLocaleString()}` })
 
@@ -158,7 +158,7 @@ router.post('/invest', async (req, res, next) => {
 
     // Check balance
     const minAmount = 20
-    const maxAmount = 100000
+    const maxAmount = 5000
     if (parseFloat(amount) < minAmount) return res.status(400).json({ error: `Minimum investment is $${minAmount}` })
     if (parseFloat(amount) > maxAmount) return res.status(400).json({ error: `Maximum investment is $${maxAmount.toLocaleString()}` })
 

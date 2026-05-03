@@ -11,7 +11,7 @@ import { PageHeader, Spinner, Panel, DataTable, Badge } from '../../components/m
 const PACKAGES = [
   { id: 'starter', label: 'Starter Protocol', min: 20,  max: 999,  yield: '0.5% - 0.75%', color: 'var(--cyan)'   },
   { id: 'pro',     label: 'Pro Alpha',        min: 1000,max: 4999, yield: '0.8% - 1.25%', color: 'var(--purple)' },
-  { id: 'elite',   label: 'Elite Nexus',      min: 5000,max: 100000,yield: '1.3% - 2.00%', color: 'var(--green)'  },
+  { id: 'elite',   label: 'Elite Nexus',      min: 5000,max: 5000, yield: '1.3% - 2.00%', color: 'var(--green)'  },
 ]
 
 export default function TradePage() {
@@ -46,7 +46,7 @@ export default function TradePage() {
     e.preventDefault()
     if (!amount || amount < 20) return toast.error('Minimum investment is $20')
     if (amount % 10 !== 0) return toast.error('Investment amount must be in multiples of $10')
-    if (amount > 100000) return toast.error('Maximum investment is $100,000')
+    if (amount > 5000) return toast.error('Maximum investment is $5,000')
     if (!pin || pin.length !== 6) return toast.error('Enter your 6-digit security PIN')
     
     const sourceKey = source === 'fund_wallet' ? 'fund' : 'income'
@@ -166,7 +166,7 @@ export default function TradePage() {
                         type="number"
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
-                        placeholder="Min. $20 (Multiples of $10)"
+                        placeholder="Min $20 - Max $5,000"
                         autoComplete="off"
                         className="input"
                         style={{ paddingLeft: '2rem', fontSize: '1rem', fontWeight: 700 }}
