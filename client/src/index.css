@@ -30,10 +30,10 @@
   --amber:         #f59e0b;
 
   /* Text */
-  --text-primary:   #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted:     #64748b;
-  --text-faint:     #475569;
+  --text-primary:   #ffffff;
+  --text-secondary: #e2e8f0;
+  --text-muted:     #cbd5e1;
+  --text-faint:     #94a3b8;
 
   /* Borders & Surfaces */
   --border:         rgba(255, 255, 255, 0.06);
