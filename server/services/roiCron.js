@@ -46,7 +46,23 @@ async function distributeROI() {
 
   let processed = 0, completed = 0
 
+  // FIX #8: Get today's IST date string to prevent double-fire on same day
+  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
+  const todayIST = new Date(Date.now() + IST_OFFSET_MS)
+  const todayStr = todayIST.toISOString().split('T')[0] // e.g. '2026-05-04'
+
   for (const pkg of activePackages) {
+    // FIX #8: Skip if ROI was already distributed today for this package
+    const alreadyRan = await prisma.roiDistribution.findFirst({
+      where: {
+        package_id: pkg.id,
+        created_at: { gte: new Date(todayStr + 'T00:00:00+05:30') }
+      }
+    })
+    if (alreadyRan) {
+      console.log(`[ROI Cron] Package #${pkg.id} already distributed today. Skipping.`)
+      continue
+    }
     const amount      = parseFloat(pkg.amount)
     const totalEarned = parseFloat(pkg.total_earned)
     const PLATFORM_LAUNCH = new Date('2026-05-04T00:00:00+05:30')
@@ -129,7 +145,7 @@ async function distributeROI() {
           data: {
             total_earned:      newTotal,
             max_return:        maxReturn,
-            daily_roi_percent: dailyRoi,
+            daily_roi_percent: dailyRoi, // FIX #4: keep stored value in sync with date-based rate
             status:            isDone ? 'completed' : 'active',
             completed_at:      isDone ? new Date() : null,
           },
@@ -149,11 +165,14 @@ async function distributeROI() {
             pair_name:  pickTradingPair(),
           },
         })
-
-        // Trigger 15-Level ROI Matching Bonus based on the generated ROI
-        const userObj = await tx.user.findUnique({ where: { id: pkg.user_id }, select: { user_id: true } })
-        await triggerROIMatchingBonus(tx, pkg.user_id, userObj?.user_id || 'Member', creditable)
       })
+
+      // FIX #3: Run matching bonus OUTSIDE the transaction — avoids long locks and Vercel timeouts
+      // Each level bonus is its own small transaction inside triggerROIMatchingBonus
+      const userObj = await prisma.user.findUnique({ where: { id: pkg.user_id }, select: { user_id: true } })
+      triggerROIMatchingBonus(pkg.user_id, userObj?.user_id || 'Member', creditable).catch(
+        (err) => console.error(`[ROI Cron] Matching bonus error for package #${pkg.id}:`, err.message)
+      )
 
       processed++
       if (isDone) completed++

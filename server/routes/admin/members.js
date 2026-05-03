@@ -165,10 +165,9 @@ router.post('/:id/activate-package', async (req, res, next) => {
     const target = await prisma.user.findUnique({ where: { id: parseInt(req.params.id) } })
     if (!target) return res.status(404).json({ error: 'Target member not found' })
 
-    // Determine daily ROI rate by amount tier
-    let dailyRoi = 0.5
-    if (amt >= 5000) dailyRoi = 2.0
-    else if (amt >= 500) dailyRoi = 1.0
+    // FIX #4: daily_roi_percent is determined by activation date relative to platform launch.
+    // The roiCron calculates and stores the correct date-based rate on each distribution run.
+    const dailyRoi = 0
 
     // Target member's total investment up to 15 days from launch
     const today = new Date()

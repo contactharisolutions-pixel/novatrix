@@ -2,7 +2,7 @@ const router       = require('express').Router()
 const multer       = require('multer')
 const path         = require('path')
 const authenticate = require('../middleware/authenticate')
-const { triggerDirectAndLevelBonus } = require('../services/bonusEngine')
+// bonusEngine is not used here — direct bonus is triggered in trades.js on package activation
 
 const { uploadToSupabase } = require('../lib/supabase')
 

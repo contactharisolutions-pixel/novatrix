@@ -57,15 +57,10 @@ router.post('/activate-for-other', async (req, res, next) => {
     if (amt < minAmount) return res.status(400).json({ error: `Minimum investment is $${minAmount}` })
     if (amt > maxAmount) return res.status(400).json({ error: `Maximum investment is $${maxAmount.toLocaleString()}` })
 
-    // Determine daily ROI rate by amount tier (Starter/Standard/Premium)
-    let dailyRoi = 0.5
-    if (amt >= 5000) {
-      dailyRoi = 2.0
-    } else if (amt >= 500) {
-      dailyRoi = 1.0
-    } else {
-      dailyRoi = 0.5
-    }
+    // FIX #4: daily_roi_percent is determined by activation date relative to platform launch.
+    // The roiCron calculates and stores the correct date-based rate on each distribution run.
+    // We store 0 here as a placeholder — it will be set correctly on the first cron run.
+    const dailyRoi = 0
 
     // Target member's total investment up to 15 days from launch
     const today = new Date()
@@ -165,15 +160,10 @@ router.post('/invest', async (req, res, next) => {
     const balanceField = source === 'fund' ? 'fund_wallet_balance' : 'income_wallet_balance'
     if (parseFloat(user[balanceField]) < parseFloat(amount)) return res.status(400).json({ error: 'Insufficient balance' })
 
-    // Determine daily ROI rate by amount tier (Starter/Standard/Premium)
-    let dailyRoi = 0.5
-    if (parseFloat(amount) >= 5000) {
-      dailyRoi = 2.0
-    } else if (parseFloat(amount) >= 500) {
-      dailyRoi = 1.0
-    } else {
-      dailyRoi = 0.5
-    }
+    // FIX #4: daily_roi_percent is determined by activation date relative to platform launch.
+    // The roiCron calculates and stores the correct date-based rate on each distribution run.
+    // We store 0 here as a placeholder — it will be set correctly on the first cron run.
+    const dailyRoi = 0
 
     // Member's total investment up to 15 days from launch
     const today = new Date()

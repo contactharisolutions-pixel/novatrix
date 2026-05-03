@@ -45,12 +45,16 @@ router.all('/run', verifyCronSecret, async (req, res) => {
 
   try {
     const now  = new Date()
-    const day  = now.getDay()   // 0=Sun, 6=Sat
-    const date = now.getDate()  // day of month (1-31)
+    // Use UTC offset math to get reliable IST time on Vercel (UTC servers)
+    // IST = UTC + 5:30. getDay() on UTC can return the wrong day when cron fires at 18:30 UTC
+    const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
+    const istNow  = new Date(now.getTime() + IST_OFFSET_MS)
+    const day  = istNow.getUTCDay()   // 0=Sun, 6=Sat — now correctly in IST
+    const date = istNow.getUTCDate()  // day of month in IST
 
-    console.log(`[CronTrigger] Starting daily run — ${now.toISOString()}`)
+    console.log(`[CronTrigger] Starting daily run — IST: ${istNow.toISOString()}, day=${day}, date=${date}`)
 
-    // 1. Monthly Royalty Distribution (runs on the 1st of every month)
+    // 1. Monthly Royalty Distribution (runs on the 1st of every month IST)
     if (date === 1) {
       await distributeMonthlyRoyalty()
       results.monthly_royalty = 'completed'
@@ -58,7 +62,7 @@ router.all('/run', verifyCronSecret, async (req, res) => {
       results.monthly_royalty = 'skipped (not 1st of month)'
     }
 
-    // 2. Daily ROI — Monday to Friday only (day 1–5)
+    // 2. Daily ROI — Monday to Friday only (day 1–5 in IST)
     if (day >= 1 && day <= 5) {
       await distributeROI()
       results.daily_roi = 'completed'

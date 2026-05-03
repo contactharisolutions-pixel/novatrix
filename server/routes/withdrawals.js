@@ -11,10 +11,13 @@ router.post('/request', async (req, res, next) => {
   const { amount, pin } = req.body
   
   // 1. Time & Day Check (Mon-Fri, 6:00 AM - 11:00 AM IST)
+  // Use UTC offset math to get reliable IST time (UTC+5:30 = +330 minutes)
+  // avoids the Node.js toLocaleString + new Date() timezone bug on Vercel (UTC servers)
   const now = new Date()
-  const istDate = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }))
-  const day = istDate.getDay()   // 0=Sun, 1=Mon, ..., 5=Fri, 6=Sat
-  const hour = istDate.getHours()
+  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000 // 5 hours 30 minutes
+  const istDate = new Date(now.getTime() + IST_OFFSET_MS)
+  const day  = istDate.getUTCDay()   // 0=Sun, 1=Mon, ..., 5=Fri, 6=Sat
+  const hour = istDate.getUTCHours()
 
   if (day === 0 || day === 6) {
     return res.status(400).json({ error: 'Withdrawals are allowed from Monday to Friday only.' })
@@ -27,6 +30,9 @@ router.post('/request', async (req, res, next) => {
   const amt = parseFloat(amount)
   if (!amt || amt < 20) {
     return res.status(400).json({ error: 'Minimum withdrawal amount is $20.' })
+  }
+  if (amt > 5000) {
+    return res.status(400).json({ error: 'Maximum withdrawal amount is $5,000 per request.' })
   }
   if (amt % 10 !== 0) {
     return res.status(400).json({ error: 'Withdrawal amount must be in multiples of $10 (e.g., $20, $30, $40).' })
