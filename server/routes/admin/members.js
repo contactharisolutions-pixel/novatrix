@@ -198,31 +198,7 @@ router.post('/:id/activate-package', async (req, res, next) => {
     const maxReturn = amt * maxMultiplier
 
     await prisma.$transaction(async (tx) => {
-      // 1. Auto allot trade fund (credit ledger)
-      await tx.fundLedger.create({
-        data: {
-          user_id: target.id,
-          type: 'credit',
-          amount: amt,
-          balance_after: parseFloat(target.fund_wallet_balance) + amt,
-          remarks: `Admin Trade Fund Allotment by ${req.admin.email}`,
-          reference_type: 'admin_allotment'
-        }
-      })
-
-      // 2. Activate Package (debit ledger)
-      await tx.fundLedger.create({
-        data: {
-          user_id: target.id,
-          type: 'debit',
-          amount: amt,
-          balance_after: parseFloat(target.fund_wallet_balance),
-          remarks: `Trade Package Activation (Admin Force)`,
-          reference_type: 'package_activation'
-        }
-      })
-
-      // 3. Create Trade Package
+      // 1. Create Trade Package Directly (No Fund Allotment Required)
       await tx.tradePackage.create({
         data: {
           user_id: target.id,

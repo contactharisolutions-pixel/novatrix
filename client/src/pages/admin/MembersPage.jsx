@@ -280,7 +280,7 @@ export default function MembersPage() {
           <form onSubmit={activatePackage} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
               <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                This action will automatically allot trading funds to the user and immediately deduct them to activate a new Trade Package. The user's status will also be set to Active.
+                This action will directly activate a new Trade Package for the user without requiring or allocating any Deposit Wallet funds. The user's status will also be set to Active.
               </p>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
