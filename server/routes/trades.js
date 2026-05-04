@@ -124,7 +124,7 @@ router.post('/activate-for-other', async (req, res, next) => {
           type:           'debit',
           amount:         amt,
           balance_after:  updatedSender.fund_wallet_balance,
-          remarks:        `External Activation for ${targetUserId} (#${target.name})`,
+          remarks:        `External Activation for ${targetUserId} (${target.name})`,
           reference_type: 'external_activation'
         }
       })
