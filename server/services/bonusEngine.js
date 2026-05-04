@@ -114,8 +114,9 @@ async function triggerDirectAndLevelBonus(memberId, investment) {
     select: { status: true }
   })
 
-  // FIX #5: Sponsor must be active AND have an active trade package to qualify
-  if (sponsor?.status === 'active' && await hasActivePackage(sponsorId)) {
+  // Direct referral bonus: sponsor only needs to be active — no own package required.
+  // hasActivePackage gate applies only to ROI level matching bonus (triggerROIMatchingBonus).
+  if (sponsor?.status === 'active') {
     const directBonusAmt = parseFloat((investment * rates.direct / 100).toFixed(2))
     if (directBonusAmt > 0) {
       await prisma.$transaction(async (tx) => {
