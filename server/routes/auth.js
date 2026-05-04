@@ -70,12 +70,14 @@ router.post(
         token,
         refresh,
         user: {
-          id:            user.id,
-          user_id:       user.user_id,
-          name:          user.name,
-          email:         user.email,
-          status:        user.status,
-          referral_code: user.referral_code,
+          id:                    user.id,
+          user_id:               user.user_id,
+          name:                  user.name,
+          email:                 user.email,
+          status:                user.status,
+          referral_code:         user.referral_code,
+          fund_wallet_balance:   user.fund_wallet_balance,
+          income_wallet_balance: user.income_wallet_balance,
         },
       })
     } catch (err) {
@@ -113,12 +115,14 @@ router.post(
         token,
         refresh,
         user: {
-          id:            user.id,
-          user_id:       user.user_id,
-          name:          user.name,
-          email:         user.email,
-          status:        user.status,
-          referral_code: user.referral_code,
+          id:                    user.id,
+          user_id:               user.user_id,
+          name:                  user.name,
+          email:                 user.email,
+          status:                user.status,
+          referral_code:         user.referral_code,
+          fund_wallet_balance:   user.fund_wallet_balance,
+          income_wallet_balance: user.income_wallet_balance,
         },
       })
     } catch (err) {

@@ -32,11 +32,14 @@ const useAuthStore = create((set, get) => ({
     return data
   },
 
-  /** Refresh user data from server */
+  /** Refresh user data from server (includes wallet balances) */
   refreshUser: async () => {
     try {
-      const { data } = await api.get('/member/profile')
-      const updatedUser = { ...get().user, ...data }
+      const { data } = await api.get('/member/dashboard')
+      const updatedUser = { ...get().user, ...data.user,
+        fund_wallet_balance:   data.user.fund_wallet_balance,
+        income_wallet_balance: data.user.income_wallet_balance,
+      }
       localStorage.setItem('nvx_user', JSON.stringify(updatedUser))
       set({ user: updatedUser })
     } catch (err) {

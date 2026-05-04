@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -15,10 +15,18 @@ const schema = z.object({
 })
 
 export default function FundTransfer() {
-  const { user } = useAuthStore()
+  const { user, refreshUser } = useAuthStore()
   const [submitting, setSubmitting] = useState(false)
   const [receiverName, setReceiverName] = useState('')
   const [verifying, setVerifying] = useState(false)
+  const [fundBalance, setFundBalance] = useState(user?.fund_wallet_balance ?? 0)
+
+  // Fetch live balance on mount
+  useEffect(() => {
+    api.get('/member/dashboard')
+      .then(({ data }) => setFundBalance(data.user?.fund_wallet_balance ?? 0))
+      .catch(() => setFundBalance(user?.fund_wallet_balance ?? 0))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const { register, handleSubmit, watch, reset, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
@@ -46,6 +54,13 @@ export default function FundTransfer() {
       toast.success(res.data.message)
       reset()
       setReceiverName('')
+      // Refresh balance after successful transfer
+      api.get('/member/dashboard')
+        .then(({ data: d }) => {
+          setFundBalance(d.user?.fund_wallet_balance ?? 0)
+          refreshUser()
+        })
+        .catch(() => {})
     } catch (err) {
       toast.error(err?.response?.data?.error || 'Transfer failed')
     } finally {
@@ -59,7 +74,7 @@ export default function FundTransfer() {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 'var(--gap-lg)' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap-lg)' }}>
-          <StatCard label="Fund Wallet Balance" value={`$${user?.fund_wallet_balance || 0}`} icon={Wallet} color="cyan" />
+          <StatCard label="Fund Wallet Balance" value={`$${Number(fundBalance).toFixed(2)}`} icon={Wallet} color="cyan" />
 
           <Panel>
             <form onSubmit={handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
