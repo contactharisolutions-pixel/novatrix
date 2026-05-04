@@ -23,12 +23,12 @@ function TreeCanvas({ treeData }) {
 
     const g = svg.append('g')
 
-    // Zoom behaviour
+    // Zoom behaviour — attach before setting initial transform
     const zoom = d3.zoom()
       .scaleExtent([0.2, 3])
       .on('zoom', (event) => g.attr('transform', event.transform))
     svg.call(zoom)
-    zoomRef.current = { zoom, svg }
+    zoomRef.current = { zoom, svg, initialTransform: null } // initialTransform set below after centering
 
     // Compute tree layout
     const root      = d3.hierarchy(treeData)
@@ -38,11 +38,15 @@ function TreeCanvas({ treeData }) {
     const nodes = root.descendants()
     const links = root.links()
 
-    // Center the tree
+    // Compute centering offset and seed it into the zoom transform
+    // so scroll-wheel zoom uses this as the base (no position jump)
     const xs = nodes.map((n) => n.x)
     const minX = Math.min(...xs), maxX = Math.max(...xs)
-    const centerOffset = width / 2 - (minX + maxX) / 2
-    g.attr('transform', `translate(${centerOffset}, 80)`)
+    const centerX = width / 2 - (minX + maxX) / 2
+    const initialTransform = d3.zoomIdentity.translate(centerX, 80)
+    svg.call(zoom.transform, initialTransform)
+    zoomRef.current.initialTransform = initialTransform
+
 
     // Links
     g.selectAll('path.link')
@@ -132,7 +136,10 @@ function TreeCanvas({ treeData }) {
 
   const zoomIn  = () => zoomRef.current?.svg.transition().call(zoomRef.current.zoom.scaleBy, 1.3)
   const zoomOut = () => zoomRef.current?.svg.transition().call(zoomRef.current.zoom.scaleBy, 0.7)
-  const reset   = () => zoomRef.current?.svg.transition().call(zoomRef.current.zoom.transform, d3.zoomIdentity)
+  const reset   = () => {
+    const { svg, zoom, initialTransform } = zoomRef.current || {}
+    if (svg && zoom) svg.transition().call(zoom.transform, initialTransform || d3.zoomIdentity)
+  }
 
   return (
     <Panel style={{ height: 560, padding: 0, position: 'relative', overflow: 'hidden', background: '#020617' }}>

@@ -52,7 +52,12 @@ const NAV_GROUPS = [
       { to: '/dashboard/earnings/level',  icon: Network,     label: 'Level Income'     },
       { to: '/dashboard/earnings/reward', icon: Trophy,      label: 'Reward Income'    },
       { to: '/dashboard/earnings/royalty', icon: Award,       label: 'Royalty Income'   },
-      { to: '/dashboard/genealogy',       icon: Network,     label: 'My Network'       },
+    ],
+  },
+  {
+    label: 'Network',
+    items: [
+      { to: '/dashboard/genealogy', icon: Network, label: 'My Network' },
     ],
   },
   {
