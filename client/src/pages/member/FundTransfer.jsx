@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Loader2, Send, User, ShieldCheck, Wallet } from 'lucide-react'
+import { Loader2, Send, User, ShieldCheck, Wallet, XCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
 import { PageHeader, StatCard, Panel, Spinner } from '../../components/member/ui'
@@ -30,22 +30,30 @@ export default function FundTransfer() {
 
   const { register, handleSubmit, watch, reset, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
+    defaultValues: { receiverUserId: '', amount: '', pin: '' },
   })
 
   const receiverId = watch('receiverUserId')
 
-  const verifyUser = async () => {
-    if (receiverId?.length !== 6) return
+  /** Live lookup — fires when receiverUserId changes to exactly 6 chars */
+  const verifyUser = useCallback(async (id) => {
+    const trimmed = id?.trim()
+    if (!trimmed || trimmed.length !== 6) {
+      setReceiverName('')
+      return
+    }
     setVerifying(true)
     try {
-      const { data } = await api.get(`/member/search?userId=${receiverId}`)
+      const { data } = await api.get(`/member/search?userId=${trimmed}`)
       setReceiverName(data.name)
     } catch {
       setReceiverName('')
     } finally {
       setVerifying(false)
     }
-  }
+  }, [])
+
+  useEffect(() => { verifyUser(receiverId) }, [receiverId, verifyUser])
 
   const onSubmit = async (data) => {
     setSubmitting(true)
@@ -82,18 +90,22 @@ export default function FundTransfer() {
                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Receiver Member ID</label>
                 <div style={{ position: 'relative' }}>
                   <User size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)' }} />
-                  <input 
-                    {...register('receiverUserId')} 
-                    placeholder="Enter 6-digit ID" 
-                    className="input" 
-                    style={{ paddingLeft: '2.75rem' }} 
-                    onBlur={verifyUser}
+                  <input
+                    {...register('receiverUserId')}
+                    placeholder="Enter 6-digit Member ID"
+                    className="input"
+                    style={{ paddingLeft: '2.75rem' }}
+                    maxLength={6}
                   />
                   {verifying && <Loader2 size={16} className="animate-spin" style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--cyan)' }} />}
+                  {!verifying && receiverName && <ShieldCheck size={16} style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--green)' }} />}
+                  {!verifying && receiverId?.trim().length === 6 && !receiverName && <XCircle size={16} style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--red)' }} />}
                 </div>
                 {receiverName && <p style={{ fontSize: '0.75rem', color: 'var(--green)', fontWeight: 700, marginTop: '0.5rem' }}>✓ Receiver: {receiverName}</p>}
+                {!verifying && receiverId?.trim().length === 6 && !receiverName && <p style={{ fontSize: '0.75rem', color: 'var(--red)', fontWeight: 600, marginTop: '0.5rem' }}>✗ Member not found</p>}
                 {errors.receiverUserId && <p style={{ color: 'var(--red)', fontSize: '0.75rem', marginTop: '0.5rem' }}>{errors.receiverUserId.message}</p>}
               </div>
+
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
                 <div>
