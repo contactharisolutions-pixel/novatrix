@@ -185,7 +185,7 @@ const LEVEL_COLS = [
   { key: 'name',          label: 'Name', render: (v) => <span style={{ fontWeight: 700 }}>{v}</span> },
   { key: 'status',        label: 'Status',  render: (v) => <Badge status={v} /> },
   { key: 'total_invested', label: 'Total Invested', render: (v) => <span style={{ fontWeight: 800, color: 'var(--green)' }}>${(+v || 0).toLocaleString()}</span> },
-  { key: 'created_at',    label: 'Join Date', render: (v) => <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>{new Date(v).toLocaleDateString()}</span> },
+  { key: 'created_at',    label: 'Join Date', render: (v) => { const d = v ? new Date(v) : null; return <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>{d && !isNaN(d) ? d.toLocaleDateString() : '—'}</span> } },
 ]
 
 export default function GenealogyPage() {

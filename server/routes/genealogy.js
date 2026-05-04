@@ -23,25 +23,25 @@ router.get('/level-report', async (req, res, next) => {
   try {
     const rows = await prisma.$queryRaw`
       WITH RECURSIVE tree AS (
-        SELECT id, user_id, name, status, sponsor_id, 1 AS lvl
+        SELECT id, user_id, name, status, sponsor_id, created_at, 1 AS lvl
         FROM "User" WHERE sponsor_id = ${req.user.id}
         UNION ALL
-        SELECT u.id, u.user_id, u.name, u.status, u.sponsor_id, t.lvl + 1
+        SELECT u.id, u.user_id, u.name, u.status, u.sponsor_id, u.created_at, t.lvl + 1
         FROM "User" u INNER JOIN tree t ON u.sponsor_id = t.id
         WHERE t.lvl < 10
       )
-      SELECT tree.id, tree.user_id, tree.name, tree.status, tree.lvl,
+      SELECT tree.id, tree.user_id, tree.name, tree.status, tree.lvl, tree.created_at,
              COALESCE(SUM(tp.amount), 0) AS total_invested
       FROM tree
       LEFT JOIN "TradePackage" tp ON tp.user_id = tree.id AND tp.status = 'active'
-      GROUP BY tree.id, tree.user_id, tree.name, tree.status, tree.lvl
+      GROUP BY tree.id, tree.user_id, tree.name, tree.status, tree.lvl, tree.created_at
       ORDER BY tree.lvl, tree.user_id
     `
     const levels = {}
     rows.forEach((r) => {
       const l = r.lvl
       if (!levels[l]) levels[l] = []
-      levels[l].push({ user_id: r.user_id, name: r.name, status: r.status, total_invested: +r.total_invested, level: +r.lvl })
+      levels[l].push({ user_id: r.user_id, name: r.name, status: r.status, total_invested: +r.total_invested, level: +r.lvl, created_at: r.created_at })
     })
     if (level > 0 && levels[level]) {
       const members = levels[level]
