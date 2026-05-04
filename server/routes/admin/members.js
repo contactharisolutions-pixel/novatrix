@@ -3,6 +3,8 @@ const jwt               = require('jsonwebtoken')
 const authenticateAdmin = require('../../middleware/authenticateAdmin')
 const prisma = require('../../lib/prisma')
 const { triggerDirectAndLevelBonus } = require('../../services/bonusEngine')
+const { processRewards }              = require('../../services/rewardEngine')
+const { updateRoyaltyRanks }          = require('../../services/royaltyEngine')
 
 router.use(authenticateAdmin)
 
@@ -221,6 +223,9 @@ router.post('/:id/activate-package', async (req, res, next) => {
     if (target.sponsor_id) {
       triggerDirectAndLevelBonus(target.id, amt).catch(console.error)
     }
+    // Instant rank/royalty re-evaluation
+    processRewards().catch(console.error)
+    updateRoyaltyRanks().catch(console.error)
 
     res.status(201).json({ message: `Successfully activated member with $${amt} package` })
   } catch (err) {

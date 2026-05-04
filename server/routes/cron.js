@@ -15,8 +15,8 @@
 
 const router = require('express').Router()
 const { distributeROI }            = require('../services/roiCron')
-const { processRewards, matureRewards } = require('../services/rewardEngine')
-const { updateRoyaltyRanks, distributeMonthlyRoyalty } = require('../services/royaltyEngine')
+const { matureRewards }            = require('../services/rewardEngine')
+const { distributeMonthlyRoyalty } = require('../services/royaltyEngine')
 
 /** Secret guard — accepts three forms:
  *  1. x-cron-secret: YOUR_SECRET       (manual / external scheduler)
@@ -63,6 +63,8 @@ router.all('/run', verifyCronSecret, async (req, res) => {
     }
 
     // 2. Daily ROI — Monday to Friday only (day 1–5 in IST)
+    //    All other incomes (direct, level, reward rank, royalty rank) fire
+    //    immediately on activation — they are NOT run here.
     if (day >= 1 && day <= 5) {
       await distributeROI()
       results.daily_roi = 'completed'
@@ -70,13 +72,7 @@ router.all('/run', verifyCronSecret, async (req, res) => {
       results.daily_roi = 'skipped (weekend)'
     }
 
-    // 3. Performance Rewards, Royalty Rank Updates, Reward Maturation — every day
-    await processRewards()
-    results.performance_rewards = 'completed'
-
-    await updateRoyaltyRanks()
-    results.royalty_ranks = 'completed'
-
+    // 3. Reward Maturation — every day (time-based: 30-day lock, must stay in cron)
     await matureRewards()
     results.reward_maturation = 'completed'
 
