@@ -244,7 +244,21 @@ export default function MemberLayout() {
         }}>
           <ShieldAlert size={16} />
           <span>ADMINISTRATIVE IMPERSONATION ACTIVE — VIEWING PLATFORM AS {user?.name?.toUpperCase()} ({user?.user_id})</span>
-          <button onClick={() => { localStorage.removeItem('nvx_impersonator'); window.location.href = '/admin/members'; }} 
+          <button onClick={() => {
+            // Restore admin credentials
+            const adminToken   = localStorage.getItem('nvx_admin_backup_token')
+            const adminRefresh = localStorage.getItem('nvx_admin_backup_refresh')
+            const adminUser    = localStorage.getItem('nvx_admin_backup_user')
+            if (adminToken)   localStorage.setItem('nvx_token',   adminToken)
+            if (adminRefresh) localStorage.setItem('nvx_refresh', adminRefresh)
+            if (adminUser)    localStorage.setItem('nvx_user',    adminUser)
+            // Clean up backup + flag
+            localStorage.removeItem('nvx_admin_backup_token')
+            localStorage.removeItem('nvx_admin_backup_refresh')
+            localStorage.removeItem('nvx_admin_backup_user')
+            localStorage.removeItem('nvx_impersonator')
+            window.location.href = '/admin/members'
+          }} 
             style={{ background: '#fff', color: '#f97316', border: 'none', padding: '0.25rem 0.75rem', borderRadius: 6, fontSize: '0.625rem', fontWeight: 900, cursor: 'pointer' }}>
             EXIT & RETURN TO ADMIN
           </button>

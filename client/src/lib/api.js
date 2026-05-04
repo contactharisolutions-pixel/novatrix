@@ -30,9 +30,24 @@ api.interceptors.response.use(
         original.headers.Authorization = `Bearer ${data.token}`
         return api(original)
       } catch {
-        localStorage.removeItem('nvx_token')
-        localStorage.removeItem('nvx_refresh')
-        window.location.href = '/login'
+        // If impersonating, restore admin session instead of sending to /login
+        if (localStorage.getItem('nvx_impersonator') === 'true') {
+          const adminToken   = localStorage.getItem('nvx_admin_backup_token')
+          const adminRefresh = localStorage.getItem('nvx_admin_backup_refresh')
+          const adminUser    = localStorage.getItem('nvx_admin_backup_user')
+          if (adminToken)   localStorage.setItem('nvx_token',   adminToken)
+          if (adminRefresh) localStorage.setItem('nvx_refresh', adminRefresh)
+          if (adminUser)    localStorage.setItem('nvx_user',    adminUser)
+          localStorage.removeItem('nvx_admin_backup_token')
+          localStorage.removeItem('nvx_admin_backup_refresh')
+          localStorage.removeItem('nvx_admin_backup_user')
+          localStorage.removeItem('nvx_impersonator')
+          window.location.href = '/admin/members'
+        } else {
+          localStorage.removeItem('nvx_token')
+          localStorage.removeItem('nvx_refresh')
+          window.location.href = '/login'
+        }
       }
     }
     return Promise.reject(err)

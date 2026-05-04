@@ -56,9 +56,18 @@ const useAuthStore = create((set, get) => ({
 
   /** Administrative Impersonation */
   impersonate: (data) => {
-    localStorage.setItem('nvx_token',   data.token)
-    localStorage.setItem('nvx_refresh', data.refresh)
-    localStorage.setItem('nvx_user',    JSON.stringify(data.user))
+    // Save admin tokens so we can restore them when exiting impersonation
+    const adminToken   = localStorage.getItem('nvx_token')
+    const adminRefresh = localStorage.getItem('nvx_refresh')
+    const adminUser    = localStorage.getItem('nvx_user')
+    if (adminToken)   localStorage.setItem('nvx_admin_backup_token',   adminToken)
+    if (adminRefresh) localStorage.setItem('nvx_admin_backup_refresh', adminRefresh)
+    if (adminUser)    localStorage.setItem('nvx_admin_backup_user',    adminUser)
+
+    // Set member credentials
+    localStorage.setItem('nvx_token',       data.token)
+    localStorage.setItem('nvx_refresh',     data.refresh)
+    localStorage.setItem('nvx_user',        JSON.stringify(data.user))
     localStorage.setItem('nvx_impersonator', 'true')
     set({ user: data.user, token: data.token })
     window.location.href = '/dashboard'
