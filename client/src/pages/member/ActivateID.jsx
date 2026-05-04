@@ -24,9 +24,13 @@ export default function ActivateID() {
 
   const { register, handleSubmit, watch, reset, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
+    defaultValues: { targetUserId: '', amount: '', pin: '' },
   })
 
   const targetId = watch('targetUserId')
+
+  // Live member lookup whenever targetUserId changes
+  useEffect(() => { verifyUser(targetId) }, [targetId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Fetch live fund wallet balance from API */
   const fetchBalance = async () => {
@@ -43,13 +47,16 @@ export default function ActivateID() {
 
   useEffect(() => { fetchBalance() }, [])
 
-  /** Verify target member ID on blur */
-  const verifyUser = async () => {
-    const id = targetId?.trim()
-    if (!id || id.length < 4) return
+  /** Verify target member ID — triggered live once ID is exactly 6 chars */
+  const verifyUser = async (id) => {
+    const trimmed = id?.trim()
+    if (!trimmed || trimmed.length !== 6) {
+      setTargetName('')
+      return
+    }
     setVerifying(true)
     try {
-      const { data } = await api.get(`/member/search?userId=${id}`)
+      const { data } = await api.get(`/member/search?userId=${trimmed}`)
       setTargetName(data.name)
     } catch {
       setTargetName('')
@@ -129,12 +136,14 @@ export default function ActivateID() {
                   <User size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)' }} />
                   <input
                     {...register('targetUserId')}
-                    placeholder="Enter Member ID to activate"
+                    placeholder="Enter 6-digit Member ID"
                     className="input"
                     style={{ paddingLeft: '2.75rem' }}
-                    onBlur={verifyUser}
+                    maxLength={6}
                   />
                   {verifying && <Loader2 size={16} className="animate-spin" style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--cyan)' }} />}
+                  {!verifying && targetName && <ShieldCheck size={16} style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--green)' }} />}
+                  {!verifying && targetId?.trim().length === 6 && !targetName && <span style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--red)', fontSize: '1rem' }}>✕</span>}
                 </div>
                 {targetName && <p style={{ fontSize: '0.75rem', color: 'var(--green)', fontWeight: 700, marginTop: '0.5rem' }}>✓ Target: {targetName}</p>}
                 {errors.targetUserId && <p style={{ color: 'var(--red)', fontSize: '0.75rem', marginTop: '0.5rem' }}>{errors.targetUserId.message}</p>}
