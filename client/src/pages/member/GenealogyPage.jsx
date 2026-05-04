@@ -174,7 +174,7 @@ function TreeCanvas({ treeData }) {
 
 /* ── Level Drill-down Table ── */
 const LEVEL_COLS = [
-  { key: 'user_id',       label: 'User ID', render: (v) => <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.8125rem' }}>#{v}</span> },
+  { key: 'user_id',       label: 'User ID', render: (v) => <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.8125rem' }}>{v}</span> },
   { key: 'name',          label: 'Name', render: (v) => <span style={{ fontWeight: 700 }}>{v}</span> },
   { key: 'status',        label: 'Status',  render: (v) => <Badge status={v} /> },
   { key: 'total_invested', label: 'Total Invested', render: (v) => <span style={{ fontWeight: 800, color: 'var(--green)' }}>${(+v || 0).toLocaleString()}</span> },

@@ -5,11 +5,11 @@ import { adminApi } from '../../store/useAdminStore'
 import { AdminPageHeader, AdminTable, StatusBadge, AdminModal, AdminSpinner, Pagination } from '../../components/admin/ui'
 
 const COLS = [
-  { key: 'id',         label: 'ID', render: (v) => <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem', color: 'var(--text-faint)' }}>#{v}</span> },
+  { key: 'id',         label: 'ID', render: (v) => <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem', color: 'var(--text-faint)' }}>{v}</span> },
   { key: 'user',       label: 'User', render: (v) => (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
        <span style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '0.875rem' }}>{v?.name}</span>
-       <span style={{ fontSize: '0.6875rem', color: 'var(--cyan)', fontWeight: 800, textTransform: 'uppercase' }}>#{v?.user_id}</span>
+       <span style={{ fontSize: '0.6875rem', color: 'var(--cyan)', fontWeight: 800, textTransform: 'uppercase' }}>{v?.user_id}</span>
     </div>
   ) },
   { key: 'amount',     label: 'Amount', render: (v) => <span style={{ fontWeight: 900, color: 'var(--green)', fontSize: '1rem' }}>${(+v).toLocaleString()}</span> },
@@ -112,7 +112,7 @@ export default function DepositsPage() {
                      <span style={{ fontSize: '0.625rem', fontWeight: 900, color: 'var(--text-faint)', textTransform: 'uppercase' }}>Subject Entity</span>
                   </div>
                   <p style={{ fontWeight: 800, fontSize: '0.9375rem', color: 'var(--text-primary)' }}>{modal.user?.name}</p>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--cyan)', fontWeight: 800 }}>#{modal.user?.user_id}</p>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--cyan)', fontWeight: 800 }}>{modal.user?.user_id}</p>
                </div>
                <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>

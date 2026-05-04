@@ -5,12 +5,12 @@ import { adminApi } from '../../store/useAdminStore'
 import { AdminPageHeader, AdminTable, StatusBadge, AdminModal, AdminSpinner, AdminStatCard } from '../../components/admin/ui'
 
 const COLS = [
-  { key: 'id',         label: 'ID', render: (v) => <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem', color: 'var(--text-faint)' }}>#{v}</span> },
+  { key: 'id',         label: 'ID', render: (v) => <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem', color: 'var(--text-faint)' }}>{v}</span> },
   { key: 'user',       label: 'Member', render: (v) => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
        <span style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '0.875rem' }}>{v?.name}</span>
        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-         <span style={{ fontSize: '0.6875rem', color: 'var(--cyan)', fontWeight: 800, textTransform: 'uppercase' }}>#{v?.user_id}</span>
+         <span style={{ fontSize: '0.6875rem', color: 'var(--cyan)', fontWeight: 800, textTransform: 'uppercase' }}>{v?.user_id}</span>
          <span style={{ fontSize: '0.6875rem', color: 'var(--text-faint)' }}>|</span>
          <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>{v?.email}</span>
        </div>
@@ -141,7 +141,7 @@ export default function KYCPage() {
             <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
                <p style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)' }}>{modal.user?.name}</p>
                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.25rem' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--cyan)', fontWeight: 800 }}>#{modal.user?.user_id}</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--cyan)', fontWeight: 800 }}>{modal.user?.user_id}</span>
                   <span style={{ color: 'var(--text-faint)' }}>·</span>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>{modal.user?.email}</span>
                </div>

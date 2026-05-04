@@ -46,7 +46,7 @@ export default function IncomeReportsPage() {
     { key: 'user', label: 'Beneficiary', render: (v) => (
        <div style={{ display: 'flex', flexDirection: 'column' }}>
           <span style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{v?.name}</span>
-          <span style={{ fontSize: '0.75rem', color: 'var(--cyan)', fontFamily: 'JetBrains Mono' }}>#{v?.user_id}</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--cyan)', fontFamily: 'JetBrains Mono' }}>{v?.user_id}</span>
        </div>
     )},
     { key: 'amount', label: 'Amount', render: (v) => <span style={{ fontWeight: 800, color: 'var(--green)' }}>${(+v).toLocaleString()}</span> },

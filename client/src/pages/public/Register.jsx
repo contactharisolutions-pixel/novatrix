@@ -26,7 +26,7 @@ const schema = z
   })
 
 const PERKS = [
-  'Daily ROI up to 1.2%',
+  'Daily ROI 0.5%, 1.0% & 2.0%',
   'Instant account activation',
   'Multi-level referral bonuses',
   '24/7 dedicated support',
@@ -261,7 +261,7 @@ export default function Register() {
         user_id:  res.user_id,
         email:    data.email,
         phone:    data.phone,
-        refCode:  res.user.referral_code || `NVX${res.user_id}`,
+        refCode:  res.user.referral_code?.replace('NVX', '') || `${res.user_id}`,
         password: data.password,
       })
     } catch (err) {

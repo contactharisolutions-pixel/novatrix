@@ -174,7 +174,7 @@ function TreeCanvas({ treeData }) {
 
 /* ── Level Drill-down Table ── */
 const LEVEL_COLS = [
-  { key: 'user_id',       label: 'User ID', render: (v) => <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.8125rem' }}>#{v}</span> },
+  { key: 'user_id',       label: 'User ID', render: (v) => <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.8125rem' }}>{v}</span> },
   { key: 'name',          label: 'Name', render: (v) => <span style={{ fontWeight: 700 }}>{v}</span> },
   { key: 'status',        label: 'Status',  render: (v) => <StatusBadge status={v} /> },
   { key: 'total_invested', label: 'Total Invested', render: (v) => <span style={{ fontWeight: 800, color: 'var(--green)' }}>${(+v || 0).toLocaleString()}</span> },
@@ -240,7 +240,7 @@ export default function GenealogyPage() {
             <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-faint)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Target Member ID</label>
             <div style={{ position: 'relative' }}>
               <Search size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)' }} />
-              <input value={searchId} onChange={e => setSearchId(e.target.value)} placeholder="e.g. NVX12345" className="input" style={{ paddingLeft: '2.75rem' }} />
+              <input value={searchId} onChange={e => setSearchId(e.target.value)} placeholder="e.g. 12345" className="input" style={{ paddingLeft: '2.75rem' }} />
             </div>
           </div>
           <button type="submit" className="btn-primary" style={{ height: 44, padding: '0 2rem' }} disabled={loading}>
@@ -256,7 +256,7 @@ export default function GenealogyPage() {
           {/* Summary cards */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '-0.5rem' }}>
             <Network size={18} style={{ color: 'var(--cyan)' }} />
-            <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)' }}>Network Overview: {rootUser.name} (#{rootUser.user_id})</h3>
+            <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)' }}>Network Overview: {rootUser.name} ({rootUser.user_id})</h3>
           </div>
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--gap-md)' }}>

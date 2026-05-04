@@ -165,5 +165,23 @@ router.get('/incomes', async (req, res, next) => {
     res.json({ reports: bonuses, total, pages: Math.ceil(total / limit) })
   } catch (err) { next(err) }
 })
+// ─── GET /api/admin/reports/roi ───────────────────────────────
+// Last 30 days ROI distribution summary
+router.get('/roi', async (req, res, next) => {
+  try {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    const distributions = await prisma.roiDistribution.findMany({
+      where:   { created_at: { gte: thirtyDaysAgo } },
+      orderBy: { created_at: 'asc' },
+      select:  { amount: true, created_at: true },
+    })
+    const byDay = {}
+    distributions.forEach((d) => {
+      const day = d.created_at.toISOString().slice(0, 10)
+      byDay[day] = (byDay[day] || 0) + +d.amount
+    })
+    res.json({ roi_history: Object.entries(byDay).map(([date, total]) => ({ date, total: +total.toFixed(2) })) })
+  } catch (err) { next(err) }
+})
 
 module.exports = router

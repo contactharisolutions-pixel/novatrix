@@ -116,7 +116,7 @@ function SidebarContent({ onClose = () => {} }) {
               {user?.name || 'Investor'}
             </p>
             <p style={{ fontSize: '0.875rem', color: '#00d4ff', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600, lineHeight: 1 }}>
-              #{user?.user_id}
+              {user?.user_id}
             </p>
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: '0.375rem',
@@ -243,7 +243,7 @@ export default function MemberLayout() {
           fontSize: '0.8125rem', fontWeight: 800, letterSpacing: '0.02em', boxShadow: '0 4px 20px rgba(249,115,22,0.4)'
         }}>
           <ShieldAlert size={16} />
-          <span>ADMINISTRATIVE IMPERSONATION ACTIVE — VIEWING PLATFORM AS {user?.name?.toUpperCase()} (#{user?.user_id})</span>
+          <span>ADMINISTRATIVE IMPERSONATION ACTIVE — VIEWING PLATFORM AS {user?.name?.toUpperCase()} ({user?.user_id})</span>
           <button onClick={() => { localStorage.removeItem('nvx_impersonator'); window.location.href = '/admin/members'; }} 
             style={{ background: '#fff', color: '#f97316', border: 'none', padding: '0.25rem 0.75rem', borderRadius: 6, fontSize: '0.625rem', fontWeight: 900, cursor: 'pointer' }}>
             EXIT & RETURN TO ADMIN

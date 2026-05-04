@@ -27,7 +27,7 @@ export default function Dashboard() {
 
   // Resolve referral_code — present in store after this patch;
   // fall back to user_id-derived code for sessions logged in before fix.
-  const referralCode = user?.referral_code || (user?.user_id ? `NVX${user.user_id}` : '')
+  const referralCode = user?.referral_code?.replace('NVX', '') || (user?.user_id ? `${user.user_id}` : '')
   const referralLink = `${siteOrigin()}/register?ref=${referralCode}`
 
   const fetchDashboard = async () => {

@@ -5,11 +5,11 @@ import { adminApi } from '../../store/useAdminStore'
 import { AdminPageHeader, AdminTable, StatusBadge, AdminModal, AdminSpinner } from '../../components/admin/ui'
 
 const COLS = [
-  { key: 'id',         label: 'ID', render: (v) => <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem', color: 'var(--text-faint)' }}>#{v}</span> },
+  { key: 'id',         label: 'ID', render: (v) => <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem', color: 'var(--text-faint)' }}>{v}</span> },
   { key: 'user',       label: 'User',  render: (v) => (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
        <span style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '0.875rem' }}>{v?.name}</span>
-       <span style={{ fontSize: '0.6875rem', color: 'var(--cyan)', fontWeight: 800, textTransform: 'uppercase' }}>#{v?.user_id}</span>
+       <span style={{ fontSize: '0.6875rem', color: 'var(--cyan)', fontWeight: 800, textTransform: 'uppercase' }}>{v?.user_id}</span>
     </div>
   ) },
   { key: 'subject',    label: 'Subject', render: (v) => <span style={{ fontWeight: 700, color: 'var(--text-primary)', maxWidth: 200, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v}</span> },
@@ -56,7 +56,7 @@ function TicketThread({ ticket, onClose, onRefresh }) {
            <StatusBadge status={ticket.status} />
            <span style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--text-faint)', textTransform: 'uppercase' }}>{ticket.category}</span>
            <span style={{ color: 'var(--border)' }}>·</span>
-           <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--cyan)' }}>#{ticket.user?.user_id} — {ticket.user?.name}</span>
+           <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--cyan)' }}>{ticket.user?.user_id} — {ticket.user?.name}</span>
         </div>
 
         <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', maxHeight: 400, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>

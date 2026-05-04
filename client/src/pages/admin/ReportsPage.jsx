@@ -57,7 +57,7 @@ export default function ReportsPage() {
   const fmt = (n) => `$${(+n || 0).toLocaleString()}`
 
   const BIZ_COLS = [
-    { key: 'user_id', label: 'Member ID', render: (v) => <span style={{ fontWeight: 800, color: 'var(--cyan)' }}>#{v}</span> },
+    { key: 'user_id', label: 'Member ID', render: (v) => <span style={{ fontWeight: 800, color: 'var(--cyan)' }}>{v}</span> },
     { key: 'name', label: 'Name', render: (v) => <span style={{ fontWeight: 700 }}>{v}</span> },
     { key: 'leg1', label: 'Strong Leg', render: (v) => <span style={{ color: 'var(--green)', fontWeight: 800 }}>{fmt(v)}</span> },
     { key: 'leg2', label: 'Leg 2', render: (v) => <span style={{ color: 'var(--purple)', fontWeight: 700 }}>{fmt(v)}</span> },

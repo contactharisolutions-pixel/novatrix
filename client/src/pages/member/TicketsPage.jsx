@@ -21,7 +21,7 @@ const replySchema = z.object({
 const CATEGORIES = ['withdrawal', 'investment', 'technical', 'other']
 
 const TICKET_COLS = [
-  { key: 'id',         label: 'ID', render: (v) => <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem', color: 'var(--text-faint)' }}>#{v}</span> },
+  { key: 'id',         label: 'ID', render: (v) => <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem', color: 'var(--text-faint)' }}>{v}</span> },
   { key: 'subject',    label: 'Subject', render: (v) => <span style={{ fontWeight: 700 }}>{v}</span> },
   { key: 'category',   label: 'Category', render: (v) => <span style={{ textTransform: 'capitalize', fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>{v}</span> },
   { key: 'status',     label: 'Status',   render: (v) => <Badge status={v} /> },
@@ -146,7 +146,7 @@ function TicketDetail({ ticketId, onBack }) {
           <h2 style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--text-primary)' }}>{ticket.subject}</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.25rem' }}>
             <Badge status={ticket.status} />
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>ID: #{ticket.id} · {ticket.category}</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>ID: {ticket.id} · {ticket.category}</span>
           </div>
         </div>
         {ticket.status !== 'closed' && (

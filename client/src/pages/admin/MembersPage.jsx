@@ -6,7 +6,7 @@ import useAuthStore from '../../store/useAuthStore'
 import { AdminPageHeader, AdminTable, StatusBadge, AdminModal, AdminSpinner, Pagination, Panel } from '../../components/admin/ui'
 
 const COLS = [
-  { key: 'user_id',    label: 'User ID', render: (v) => <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem', color: 'var(--cyan)', fontWeight: 800 }}>#{v}</span> },
+  { key: 'user_id',    label: 'User ID', render: (v) => <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem', color: 'var(--cyan)', fontWeight: 800 }}>{v}</span> },
   { key: 'name',       label: 'User', render: (v, row) => (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
        <span style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{v}</span>

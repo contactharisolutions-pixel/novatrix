@@ -120,7 +120,7 @@ export default function AnnouncementsPage() {
   }
 
   const COLS = [
-    { key: 'id',           label: 'ID', render: (v) => <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem', color: 'var(--text-faint)' }}>#{v}</span> },
+    { key: 'id',           label: 'ID', render: (v) => <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem', color: 'var(--text-faint)' }}>{v}</span> },
     { key: 'title',        label: 'Subject', render: (v) => <span style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '0.875rem' }}>{v}</span> },
     { key: 'priority',     label: 'Urgency', render: (v) => {
        const cfg = PRIORITY_BADGE[v] || PRIORITY_BADGE.normal

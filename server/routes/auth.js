@@ -47,7 +47,7 @@ router.post(
 
       const user_id       = await generateUserId()
       const password_hash = await bcrypt.hash(password, 12)
-      const myReferralCode = `NVX${user_id}`
+      const myReferralCode = `${user_id}`
 
       const user = await prisma.user.create({
         data: {

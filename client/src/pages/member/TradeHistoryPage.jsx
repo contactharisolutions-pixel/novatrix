@@ -6,7 +6,7 @@ import api from '../../lib/api'
 import { PageHeader, DataTable, Badge, Spinner } from '../../components/member/ui'
 
 const COLUMNS = [
-  { key: 'id',                label: 'ID', render: (v) => <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem', color: 'var(--text-faint)' }}>#{v}</span> },
+  { key: 'id',                label: 'ID', render: (v) => <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem', color: 'var(--text-faint)' }}>{v}</span> },
   { key: 'amount',            label: 'Invested',   render: (v) => <span style={{ fontWeight: 800, color: 'var(--text-primary)' }}>${(+v).toLocaleString()}</span> },
   { key: 'daily_roi_percent', label: 'Profit (%)',  render: (v) => <span style={{ color: 'var(--cyan)', fontWeight: 700 }}>{v}%</span> },
   { key: 'total_earned',      label: 'Earned ($)',   render: (v) => <span style={{ color: 'var(--green)', fontWeight: 700 }}>${(+v).toLocaleString()}</span> },

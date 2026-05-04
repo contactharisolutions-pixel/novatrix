@@ -152,11 +152,14 @@ app.use((err, _req, res, _next) => {
   res.status(err.status || 500).json({ error: err.message || 'Internal server error' })
 })
 
-// ─── Start server ─────────────────────────────────────────────
-app.listen(PORT, () => {
-  console.log(`✅ Novatrix API running on http://localhost:${PORT}`)
-  startROICron()
-})
- 
- 
- 
+// ─── Start server (local dev only) / Export for Vercel serverless ─────────
+if (process.env.VERCEL !== '1') {
+  // Running locally — start the HTTP server and the cron scheduler
+  app.listen(PORT, () => {
+    console.log(`✅ Novatrix API running on http://localhost:${PORT}`)
+    startROICron()
+  })
+}
+
+// REQUIRED: Vercel's @vercel/node runtime calls module.exports directly
+module.exports = app

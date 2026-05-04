@@ -34,7 +34,7 @@ async function run() {
       }
 
       const user_id = await generateUniqueUserId()
-      const referral_code = 'NVX' + user_id
+      const referral_code = String(user_id)
       const password_hash = await bcrypt.hash(m.password, 10)
 
       await prisma.user.create({

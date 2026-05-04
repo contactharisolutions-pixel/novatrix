@@ -18,7 +18,7 @@ async function seed() {
         email: 'root@novatrix.vip',
         phone: '1234567890',
         password_hash,
-        referral_code: `NVX${rootId}`,
+        referral_code: `${rootId}`,
         status: 'active',
       }
     });
@@ -47,7 +47,7 @@ async function seed() {
         email: `test${i}@novatrix.vip`,
         phone: `9990000${String(i).padStart(3, '0')}`,
         password_hash,
-        referral_code: `NVX${userIdStr}`,
+        referral_code: `${userIdStr}`,
         sponsor_id: sponsor.id,
         status: Math.random() > 0.2 ? 'active' : 'inactive',
       }
