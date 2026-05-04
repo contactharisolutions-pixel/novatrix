@@ -228,4 +228,21 @@ router.post('/:id/activate-package', async (req, res, next) => {
   }
 })
 
+// ─── POST /api/admin/members/:id/reset-password ──────────────
+const bcrypt = require('bcryptjs')
+router.post('/:id/reset-password', async (req, res, next) => {
+  const { new_password } = req.body
+  if (!new_password || new_password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters' })
+  }
+  try {
+    const hash = await bcrypt.hash(new_password, 12)
+    await prisma.user.update({
+      where: { id: parseInt(req.params.id) },
+      data:  { password_hash: hash },
+    })
+    res.json({ message: 'Password reset successfully', new_password })
+  } catch (err) { next(err) }
+})
+
 module.exports = router
