@@ -17,10 +17,11 @@ export default function IncomeReportPage({ type, title, subtitle, icon: Icon }) 
       .finally(() => setLoading(false))
   }, [type, title])
 
-  const filtered = data.filter(item => 
-    item.remarks?.toLowerCase().includes(search.toLowerCase()) ||
-    item.from_user?.name?.toLowerCase().includes(search.toLowerCase()) ||
-    item.from_user?.user_id?.toLowerCase().includes(search.toLowerCase())
+  const q = search.toLowerCase()
+  const filtered = !q ? data : data.filter(item =>
+    (item.remarks || '').toLowerCase().includes(q) ||
+    (item.from_user?.name || '').toLowerCase().includes(q) ||
+    (item.from_user?.user_id || '').toLowerCase().includes(q)
   )
 
   const fmt = (n) => `$${(+n || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`

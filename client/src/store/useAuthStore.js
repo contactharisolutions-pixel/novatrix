@@ -52,25 +52,23 @@ const useAuthStore = create((set, get) => ({
     localStorage.removeItem('nvx_token')
     localStorage.removeItem('nvx_refresh')
     localStorage.removeItem('nvx_user')
-    localStorage.removeItem('nvx_impersonator') // Clear impersonation flag
+    localStorage.removeItem('nvx_impersonator')
+    localStorage.removeItem('nvx_admin_backup_session')
     set({ user: null, token: null })
     window.location.href = '/login'
   },
 
   /** Administrative Impersonation */
   impersonate: (data) => {
-    // Save admin tokens so we can restore them when exiting impersonation
-    const adminToken   = localStorage.getItem('nvx_token')
-    const adminRefresh = localStorage.getItem('nvx_refresh')
-    const adminUser    = localStorage.getItem('nvx_user')
-    if (adminToken)   localStorage.setItem('nvx_admin_backup_token',   adminToken)
-    if (adminRefresh) localStorage.setItem('nvx_admin_backup_refresh', adminRefresh)
-    if (adminUser)    localStorage.setItem('nvx_admin_backup_user',    adminUser)
+    // Admin session is persisted by Zustand under 'nvx_admin_session' key.
+    // We back it up so we can fully restore it when exiting impersonation.
+    const adminSession = localStorage.getItem('nvx_admin_session')
+    if (adminSession) localStorage.setItem('nvx_admin_backup_session', adminSession)
 
-    // Set member credentials
-    localStorage.setItem('nvx_token',       data.token)
-    localStorage.setItem('nvx_refresh',     data.refresh)
-    localStorage.setItem('nvx_user',        JSON.stringify(data.user))
+    // Write member credentials into the member auth keys
+    localStorage.setItem('nvx_token',        data.token)
+    localStorage.setItem('nvx_refresh',      data.refresh)
+    localStorage.setItem('nvx_user',         JSON.stringify(data.user))
     localStorage.setItem('nvx_impersonator', 'true')
     set({ user: data.user, token: data.token })
     window.location.href = '/dashboard'

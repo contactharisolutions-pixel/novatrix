@@ -3,7 +3,7 @@ import { Outlet, NavLink, Link, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, User, Wallet, TrendingUp, Network, DollarSign,
   ArrowUpFromLine, Ticket, LogOut, TrendingDown, Menu, X,
-  Bell, Settings, ShieldCheck, Megaphone, ChevronDown,
+  Bell, Settings, ShieldCheck, ShieldAlert, Megaphone, ChevronDown,
   Activity, Trophy, Award, Send, Zap, History as HistoryIcon,
 } from 'lucide-react'
 import useAuthStore from '../store/useAuthStore'
@@ -210,6 +210,7 @@ export default function MemberLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [announcementCount, setAnnouncementCount] = useState(0)
   const { user } = useAuthStore()
+  const isImpersonating = useAuthStore((s) => s.isImpersonating)()
   const location = useLocation()
 
   useEffect(() => {
@@ -240,7 +241,7 @@ export default function MemberLayout() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--navy)' }}>
       <UrgentAnnouncementPopup />
-      {useAuthStore(s => s.isImpersonating)() && (
+      {isImpersonating && (
         <div style={{ 
           position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999, 
           background: 'linear-gradient(90deg, #f97316, #ef4444)', color: '#fff', 
@@ -250,17 +251,14 @@ export default function MemberLayout() {
           <ShieldAlert size={16} />
           <span>ADMINISTRATIVE IMPERSONATION ACTIVE — VIEWING PLATFORM AS {user?.name?.toUpperCase()} ({user?.user_id})</span>
           <button onClick={() => {
-            // Restore admin credentials
-            const adminToken   = localStorage.getItem('nvx_admin_backup_token')
-            const adminRefresh = localStorage.getItem('nvx_admin_backup_refresh')
-            const adminUser    = localStorage.getItem('nvx_admin_backup_user')
-            if (adminToken)   localStorage.setItem('nvx_token',   adminToken)
-            if (adminRefresh) localStorage.setItem('nvx_refresh', adminRefresh)
-            if (adminUser)    localStorage.setItem('nvx_user',    adminUser)
-            // Clean up backup + flag
-            localStorage.removeItem('nvx_admin_backup_token')
-            localStorage.removeItem('nvx_admin_backup_refresh')
-            localStorage.removeItem('nvx_admin_backup_user')
+            // Restore admin Zustand session from the backup we made during impersonation
+            const adminSession = localStorage.getItem('nvx_admin_backup_session')
+            if (adminSession) localStorage.setItem('nvx_admin_session', adminSession)
+            // Clean up member auth keys and all impersonation artifacts
+            localStorage.removeItem('nvx_token')
+            localStorage.removeItem('nvx_refresh')
+            localStorage.removeItem('nvx_user')
+            localStorage.removeItem('nvx_admin_backup_session')
             localStorage.removeItem('nvx_impersonator')
             window.location.href = '/admin/members'
           }} 

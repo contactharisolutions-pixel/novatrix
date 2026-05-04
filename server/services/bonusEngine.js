@@ -148,34 +148,42 @@ async function triggerDirectAndLevelBonus(memberId, investment) {
  * @param {number} roiAmount     - The ROI amount generated
  */
 async function triggerROIMatchingBonus(memberId, memberUserId, roiAmount) {
-  const LEVEL_RATES = [0, 20, 15, 10, 5, 4, 3, 2, 2, 2, 1, 1, 1, 1, 0.5, 0.5]
-  
+  const rates = await getCommissionRates()
+  const LEVEL_RATES = rates.levels
+
   let currentId = memberId
   let level = 1
 
   // Walk up the sponsor chain up to 15 levels
   while (level <= 15) {
-    const current = await prisma.user.findUnique({ 
-      where: { id: currentId },
-      select: { sponsor_id: true }
+    const current = await prisma.user.findUnique({
+      where:  { id: currentId },
+      select: { sponsor_id: true },
     })
     if (!current?.sponsor_id) break
 
     const sponsorId = current.sponsor_id
-    
-    const sponsor = await prisma.user.findUnique({ 
-      where: { id: sponsorId },
-      select: { status: true }
+
+    const sponsor = await prisma.user.findUnique({
+      where:  { id: sponsorId },
+      select: { status: true },
     })
 
-    // FIX #5: Sponsor must be active AND have at least one active trade package
+    // Sponsor must be active AND have at least one active trade package
     if (sponsor?.status === 'active' && await hasActivePackage(sponsorId)) {
-      const directActives = await prisma.user.count({
-        where: { sponsor_id: sponsorId, status: 'active' }
+      // Count direct referrals of this sponsor who have at least one active trade package.
+      // Using TradePackage (not user.status) because a user can hold an active package
+      // while their user-level status is still 'inactive' (e.g. admin-activated packages).
+      const activeDownlineCount = await prisma.tradePackage.count({
+        where: {
+          status: 'active',
+          user:   { sponsor_id: sponsorId },
+        },
       })
 
-      if (directActives >= level) {
-        const rate = LEVEL_RATES[level] || 0
+      // Gate: sponsor must have at least `level` active investing referrals to earn at this depth
+      if (activeDownlineCount >= level) {
+        const rate     = LEVEL_RATES[level] || 0
         const bonusAmt = parseFloat((roiAmount * rate / 100).toFixed(2))
         if (bonusAmt > 0) {
           // Each bonus credit is its own small atomic transaction — avoids giant lock
@@ -187,7 +195,7 @@ async function triggerROIMatchingBonus(memberId, memberUserId, roiAmount) {
               'level',
               memberId,
               level,
-              `Level ${level} ROI matching bonus from ${memberUserId}`
+              `Level ${level} ROI matching bonus from ${memberUserId}`,
             )
           })
         }
