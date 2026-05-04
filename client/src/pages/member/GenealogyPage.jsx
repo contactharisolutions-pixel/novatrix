@@ -102,7 +102,7 @@ function TreeCanvas({ treeData }) {
       .attr('fill', 'var(--cyan)')
       .attr('font-size', '9px')
       .attr('font-family', 'JetBrains Mono, monospace')
-      .text((d) => d.data.user_id ? `#${d.data.user_id}` : '')
+      .text((d) => d.data.user_id || '')
 
     // Level badge
     if (nodes.length > 1) {
