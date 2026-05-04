@@ -21,7 +21,8 @@ router.get('/dashboard', async (req, res, next) => {
     if (!user) return res.status(404).json({ error: 'User not found' })
 
     const [totalTopup, totalWithdraw, totalEarning, teamCount, activeTeamCount, todayJoiningCount, todayBusinessSum, todayActivationCount] = await Promise.all([
-      prisma.deposit.aggregate({ where: { user_id: req.user.id, status: 'approved' }, _sum: { amount: true } }),
+      // Total Topup = all fund wallet credits (deposits + admin credits)
+      prisma.fundLedger.aggregate({ where: { user_id: req.user.id, type: 'credit' }, _sum: { amount: true } }),
       prisma.withdrawal.aggregate({ where: { user_id: req.user.id, status: 'approved' }, _sum: { amount: true } }),
       prisma.bonus.aggregate({ where: { user_id: req.user.id }, _sum: { amount: true } }),
       
@@ -45,7 +46,7 @@ router.get('/dashboard', async (req, res, next) => {
         SELECT COUNT(*) as count FROM tree
       `,
 
-      // Today's Joining (Recursive)
+      // Today's Joining (Recursive) — IST timezone
       prisma.$queryRaw`
         WITH RECURSIVE tree AS (
           SELECT id FROM "User" WHERE sponsor_id = ${req.user.id}
@@ -54,10 +55,10 @@ router.get('/dashboard', async (req, res, next) => {
         )
         SELECT COUNT(*) as count FROM "User" 
         WHERE id IN (SELECT id FROM tree) 
-        AND created_at >= CURRENT_DATE
+        AND (created_at AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date
       `,
 
-      // Today's Business (Recursive Sum of Trade Packages)
+      // Today's Business (Recursive Sum of Trade Packages) — IST timezone
       prisma.$queryRaw`
         WITH RECURSIVE tree AS (
           SELECT id FROM "User" WHERE sponsor_id = ${req.user.id}
@@ -66,10 +67,10 @@ router.get('/dashboard', async (req, res, next) => {
         )
         SELECT SUM(amount) as total FROM "TradePackage" 
         WHERE user_id IN (SELECT id FROM tree) 
-        AND started_at >= CURRENT_DATE
+        AND (started_at AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date
       `,
 
-      // Today's Activations (Users who got their FIRST package today in downline)
+      // Today's Activations (Users who got their FIRST package today in downline) — IST timezone
       prisma.$queryRaw`
         WITH RECURSIVE tree AS (
           SELECT id FROM "User" WHERE sponsor_id = ${req.user.id}
@@ -78,9 +79,10 @@ router.get('/dashboard', async (req, res, next) => {
         )
         SELECT COUNT(DISTINCT user_id) as count FROM "TradePackage"
         WHERE user_id IN (SELECT id FROM tree)
-        AND started_at >= CURRENT_DATE
+        AND (started_at AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date
         AND user_id NOT IN (
-          SELECT user_id FROM "TradePackage" WHERE started_at < CURRENT_DATE
+          SELECT user_id FROM "TradePackage" 
+          WHERE (started_at AT TIME ZONE 'Asia/Kolkata')::date < (NOW() AT TIME ZONE 'Asia/Kolkata')::date
         )
       `
     ])
