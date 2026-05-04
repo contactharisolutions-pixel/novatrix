@@ -1,7 +1,10 @@
 import { create } from 'zustand'
 import api from '../lib/api'
 
-/** Global auth + member state store */
+/** Canonical site origin — use VITE_SITE_URL in prod; fall back to window.location.origin in dev */
+export const siteOrigin = () =>
+  import.meta.env.VITE_SITE_URL?.replace(/\/$/, '') || window.location.origin
+
 const useAuthStore = create((set, get) => ({
   user:    JSON.parse(localStorage.getItem('nvx_user') || 'null'),
   token:   localStorage.getItem('nvx_token') || null,

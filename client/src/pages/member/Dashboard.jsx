@@ -4,10 +4,11 @@ import {
   Wallet, DollarSign, TrendingUp, ArrowUpFromLine,
   Users, Copy, ArrowRight, RefreshCw, Activity,
   Zap, UserPlus, BarChart3, TrendingDown, ShieldCheck,
+  Share2, CheckCheck,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
-import useAuthStore from '../../store/useAuthStore'
+import useAuthStore, { siteOrigin } from '../../store/useAuthStore'
 import { StatCard, Spinner, Badge, PageHeader, Panel, PanelTitle } from '../../components/member/ui'
 import { CapitalHubTicker, ForexLiveGraph } from '../../components/member/DashboardWidgets'
 
@@ -19,15 +20,25 @@ const QUICK_ACTIONS = [
 ]
 
 export default function Dashboard() {
-  const { user }                  = useAuthStore()
-  const [stats,   setStats]       = useState(null)
-  const [loading, setLoading]     = useState(true)
+  const { user, refreshUser }         = useAuthStore()
+  const [stats,   setStats]           = useState(null)
+  const [loading, setLoading]         = useState(true)
+  const [copied,  setCopied]          = useState(false)
+
+  // Resolve referral_code — present in store after this patch;
+  // fall back to user_id-derived code for sessions logged in before fix.
+  const referralCode = user?.referral_code || (user?.user_id ? `NVX${user.user_id}` : '')
+  const referralLink = `${siteOrigin()}/register?ref=${referralCode}`
 
   const fetchDashboard = async () => {
     setLoading(true)
     try {
       const { data } = await api.get('/member/dashboard')
       setStats(data.stats)
+      // If referral_code is missing from the stored user (pre-fix sessions), refresh it
+      if (!user?.referral_code && data.user?.referral_code) {
+        refreshUser()
+      }
     } catch {
       toast.error('Could not load dashboard data')
     } finally {
@@ -38,9 +49,31 @@ export default function Dashboard() {
   useEffect(() => { fetchDashboard() }, [])
 
   const copyReferral = () => {
-    const link = `${window.location.origin}/register?ref=${user?.referral_code || ''}`
-    navigator.clipboard.writeText(link)
-    toast.success('Referral link copied!')
+    navigator.clipboard.writeText(referralLink)
+      .then(() => {
+        setCopied(true)
+        toast.success('Referral link copied!')
+        setTimeout(() => setCopied(false), 2500)
+      })
+      .catch(() => toast.error('Copy failed — please copy manually'))
+  }
+
+  const shareReferral = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Join Novatrix',
+          text: `Join Novatrix with my referral link and start earning daily returns! Use code: ${referralCode}`,
+          url: referralLink,
+        })
+      } catch (e) {
+        if (e.name !== 'AbortError') toast.error('Share cancelled')
+      }
+    } else {
+      // Fallback: copy if Web Share API not available
+      copyReferral()
+      toast('Sharing not supported — link copied instead', { icon: '📋' })
+    }
   }
 
   const fmt = (n) => `$${(+n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -122,18 +155,43 @@ export default function Dashboard() {
           <div style={{ display: 'flex', gap: '0.75rem' }}>
             <input
               readOnly
-              value={`${window.location.origin}/register?ref=${user?.referral_code || ''}`}
+              value={referralLink}
               className="input mono"
               style={{ fontSize: '0.8125rem', flex: 1, background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)' }}
+              onFocus={(e) => e.target.select()}
             />
+            {/* Share button — uses Web Share API (mobile) or falls back to copy */}
+            <button
+              onClick={shareReferral}
+              className="btn-secondary"
+              title="Share referral link"
+              style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+              <Share2 size={14} />
+              <span>Share</span>
+            </button>
+            {/* Copy button */}
             <button
               onClick={copyReferral}
               className="btn-primary"
-              style={{ padding: '0.75rem 1.25rem', fontSize: '0.875rem', flexShrink: 0 }}
+              title="Copy referral link"
+              style={{
+                padding: '0.75rem 1.25rem', fontSize: '0.875rem', flexShrink: 0,
+                display: 'flex', alignItems: 'center', gap: '0.5rem',
+                background: copied ? 'var(--green)' : undefined,
+                transition: 'background 0.3s',
+              }}
             >
-              <Copy size={14} /> <span>Copy</span>
+              {copied ? <CheckCheck size={14} /> : <Copy size={14} />}
+              <span>{copied ? 'Copied!' : 'Copy'}</span>
             </button>
           </div>
+          {/* Show referral code separately for easy reference */}
+          {referralCode && (
+            <p style={{ marginTop: '0.5rem', fontSize: '0.775rem', color: 'var(--text-faint)' }}>
+              Your referral code: <span style={{ color: 'var(--cyan)', fontWeight: 700, fontFamily: 'monospace' }}>{referralCode}</span>
+            </p>
+          )}
         </Panel>
 
         {/* Forex Live Graph */}

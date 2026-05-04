@@ -1,13 +1,31 @@
 const { createClient } = require('@supabase/supabase-js')
 
-const supabaseUrl = process.env.SUPABASE_URL
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+// ── Lazy singleton so the client is only built once and only when needed ──
+let _supabase = null
 
-if (!supabaseUrl || !supabaseKey) {
-  console.warn('⚠️  Supabase credentials missing. Media uploads will fail.')
+function getClient() {
+  if (_supabase) return _supabase
+
+  const url = process.env.SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!url || !key) {
+    throw new Error(
+      'Storage service is not configured. ' +
+      'Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables.'
+    )
+  }
+
+  _supabase = createClient(url, key, {
+    auth: { persistSession: false }, // serverless — no session persistence
+  })
+  return _supabase
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey)
+// Warn at startup if credentials are missing (non-fatal, uploads will surface the error)
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  console.warn('⚠️  Supabase credentials missing (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY). Media uploads will fail.')
+}
 
 /**
  * Uploads a file buffer to Supabase Storage.
@@ -17,7 +35,8 @@ const supabase = createClient(supabaseUrl, supabaseKey)
  * @returns {Promise<string>}   - Public URL of the uploaded file
  */
 async function uploadToSupabase(buffer, fileName, contentType) {
-  const bucket = process.env.SUPABASE_BUCKET || 'novatrix'
+  const supabase = getClient() // throws if credentials missing
+  const bucket   = process.env.SUPABASE_BUCKET || 'novatrix'
 
   console.log(`[Supabase] Uploading ${fileName} (${(buffer.length / 1024).toFixed(1)} KB) → bucket:${bucket}`)
 
@@ -25,12 +44,12 @@ async function uploadToSupabase(buffer, fileName, contentType) {
     .from(bucket)
     .upload(fileName, buffer, {
       contentType: contentType || 'application/octet-stream',
-      upsert:      true,   // Allow re-upload on same path (e.g. KYC resubmission)
+      upsert: true, // Allow re-upload on same path (e.g. KYC resubmission)
     })
 
   if (error) {
     // Surface the full Supabase error (statusCode, message, error name)
-    const detail = `[${error.statusCode ?? '?'}] ${error.error ?? ''} — ${error.message ?? 'unknown'}`
+    const detail = `[${error.statusCode ?? error.status ?? '?'}] ${error.error ?? ''} — ${error.message ?? 'unknown'}`
     console.error(`[Supabase Upload Failed] ${fileName}: ${detail}`)
     throw new Error(`Upload failed: ${detail}`)
   }
@@ -49,9 +68,17 @@ async function uploadToSupabase(buffer, fileName, contentType) {
  * @param {string[]} paths  - Array of file paths inside the bucket
  */
 async function deleteFromSupabase(paths) {
-  const bucket = process.env.SUPABASE_BUCKET || 'novatrix'
-  const { error } = await supabase.storage.from(bucket).remove(paths)
-  if (error) console.error('[Supabase Delete Failed]:', error.message)
+  try {
+    const supabase = getClient()
+    const bucket   = process.env.SUPABASE_BUCKET || 'novatrix'
+    const { error } = await supabase.storage.from(bucket).remove(paths)
+    if (error) console.error('[Supabase Delete Failed]:', error.message)
+  } catch (err) {
+    console.error('[Supabase Delete Skipped]:', err.message)
+  }
 }
 
-module.exports = { supabase, uploadToSupabase, deleteFromSupabase }
+// Named export for direct use (e.g. listing buckets, admin queries)
+function getSupabase() { return getClient() }
+
+module.exports = { getSupabase, uploadToSupabase, deleteFromSupabase }

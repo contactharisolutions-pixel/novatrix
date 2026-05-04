@@ -70,11 +70,12 @@ router.post(
         token,
         refresh,
         user: {
-          id:          user.id,
-          user_id:     user.user_id,
-          name:        user.name,
-          email:       user.email,
-          status:      user.status,
+          id:            user.id,
+          user_id:       user.user_id,
+          name:          user.name,
+          email:         user.email,
+          status:        user.status,
+          referral_code: user.referral_code,
         },
       })
     } catch (err) {
@@ -112,11 +113,12 @@ router.post(
         token,
         refresh,
         user: {
-          id:          user.id,
-          user_id:     user.user_id,
-          name:        user.name,
-          email:       user.email,
-          status:      user.status,
+          id:            user.id,
+          user_id:       user.user_id,
+          name:          user.name,
+          email:         user.email,
+          status:        user.status,
+          referral_code: user.referral_code,
         },
       })
     } catch (err) {

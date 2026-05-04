@@ -6,9 +6,10 @@ import { z } from 'zod'
 import {
   TrendingUp, Eye, EyeOff, Loader2, User, Mail, Phone,
   Gift, Lock, Shield, ArrowRight, CheckCircle2,
+  Copy, X, BadgeCheck, Share2,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import useAuthStore from '../../store/useAuthStore'
+import useAuthStore, { siteOrigin } from '../../store/useAuthStore'
 
 const schema = z
   .object({
@@ -31,9 +32,211 @@ const PERKS = [
   '24/7 dedicated support',
 ]
 
+/* ── Success Modal ─────────────────────────────────────────────────────────── */
+function SuccessModal({ data, onClose }) {
+  const [copied, setCopied] = useState(null)
+
+  const copy = (text, field) => {
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        setCopied(field)
+        toast.success('Copied!')
+        setTimeout(() => setCopied(null), 2000)
+      })
+      .catch(() => toast.error('Copy failed'))
+  }
+
+  const shareReferral = async () => {
+    const link = `${siteOrigin()}/register?ref=${data.refCode}`
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Join Novatrix',
+          text: `Join me on Novatrix and start earning daily returns! Use my referral code: ${data.refCode}`,
+          url: link,
+        })
+      } catch (e) {
+        if (e.name !== 'AbortError') toast.error('Share cancelled')
+      }
+    } else {
+      navigator.clipboard.writeText(link).then(() => toast.success('Referral link copied!'))
+    }
+  }
+
+  const rows = [
+    { label: 'Full Name',     value: data.name,     field: 'name'  },
+    { label: 'User ID',       value: data.user_id,  field: 'uid'   },
+    { label: 'Email',         value: data.email,    field: 'email' },
+    { label: 'Phone',         value: data.phone,    field: 'phone' },
+    { label: 'Referral Code', value: data.refCode,  field: 'ref'   },
+    { label: 'Password',      value: data.password, field: 'pw', sensitive: true },
+  ]
+
+  return (
+    /* Backdrop */
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(0,0,0,0.75)',
+        backdropFilter: 'blur(6px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '1.25rem',
+        animation: 'fadeIn 0.2s ease',
+      }}
+    >
+      {/* Modal card */}
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: 'var(--navy-card)',
+          border: '1px solid var(--border-light)',
+          borderRadius: 20,
+          width: '100%', maxWidth: 460,
+          boxShadow: '0 32px 80px rgba(0,0,0,0.6)',
+          overflow: 'hidden',
+          animation: 'slideUp 0.3s cubic-bezier(0.34,1.56,0.64,1)',
+        }}
+      >
+        {/* Header gradient bar */}
+        <div style={{ height: 4, background: 'linear-gradient(90deg, var(--cyan), var(--purple))' }} />
+
+        {/* Header */}
+        <div style={{ padding: '1.75rem 1.75rem 0', position: 'relative' }}>
+          <button
+            onClick={onClose}
+            style={{
+              position: 'absolute', top: '1.25rem', right: '1.25rem',
+              background: 'rgba(255,255,255,0.07)', border: '1px solid var(--border-light)',
+              borderRadius: 8, padding: '0.3rem', cursor: 'pointer',
+              color: 'var(--text-faint)', display: 'flex',
+            }}
+          >
+            <X size={16} />
+          </button>
+
+          {/* Icon + title */}
+          <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
+            <div style={{
+              width: 62, height: 62, borderRadius: '50%', margin: '0 auto 0.875rem',
+              background: 'linear-gradient(135deg, rgba(16,185,129,0.2), rgba(16,185,129,0.05))',
+              border: '2px solid rgba(16,185,129,0.4)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <BadgeCheck size={30} style={{ color: 'var(--green)' }} />
+            </div>
+            <h2 style={{
+              fontFamily: 'Outfit, sans-serif', fontSize: '1.35rem', fontWeight: 700,
+              marginBottom: '0.3rem',
+            }}>
+              Account Created Successfully!
+            </h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.83rem', lineHeight: 1.5 }}>
+              Save your login credentials securely.<br />
+              You will need them to access your account.
+            </p>
+          </div>
+        </div>
+
+        {/* Details table */}
+        <div style={{ padding: '0 1.75rem 1.75rem' }}>
+          <div style={{
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid var(--border-light)',
+            borderRadius: 12, overflow: 'hidden',
+          }}>
+            {rows.map(({ label, value, field, sensitive }, i) => (
+              <div
+                key={field}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '0.7rem 1rem',
+                  borderBottom: i < rows.length - 1 ? '1px solid var(--border-light)' : 'none',
+                  gap: '0.5rem',
+                  background: sensitive ? 'rgba(124,58,237,0.05)' : 'transparent',
+                }}
+              >
+                <div style={{ minWidth: 110 }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)', fontWeight: 500 }}>
+                    {label}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, justifyContent: 'flex-end' }}>
+                  <span style={{
+                    fontSize: '0.85rem', fontWeight: sensitive ? 700 : 600,
+                    color: sensitive ? 'var(--cyan)' : 'var(--text-primary)',
+                    fontFamily: sensitive ? 'monospace' : 'inherit',
+                    wordBreak: 'break-all', textAlign: 'right',
+                  }}>
+                    {value || '—'}
+                  </span>
+                  <button
+                    onClick={() => copy(value, field)}
+                    title="Copy"
+                    style={{
+                      background: copied === field ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.06)',
+                      border: `1px solid ${copied === field ? 'rgba(16,185,129,0.4)' : 'var(--border-light)'}`,
+                      borderRadius: 6, padding: '0.25rem', cursor: 'pointer',
+                      color: copied === field ? 'var(--green)' : 'var(--text-faint)',
+                      display: 'flex', flexShrink: 0, transition: 'all 0.2s',
+                    }}
+                  >
+                    <Copy size={13} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Warning note */}
+          <div style={{
+            marginTop: '1rem',
+            background: 'rgba(245,158,11,0.08)',
+            border: '1px solid rgba(245,158,11,0.25)',
+            borderRadius: 10, padding: '0.65rem 0.9rem',
+            display: 'flex', gap: '0.5rem', alignItems: 'flex-start',
+          }}>
+            <Shield size={14} style={{ color: '#f59e0b', flexShrink: 0, marginTop: 2 }} />
+            <p style={{ fontSize: '0.775rem', color: '#f59e0b', lineHeight: 1.55, margin: 0 }}>
+              Please save your password now. For security reasons, it will not be shown again.
+            </p>
+          </div>
+
+          {/* CTA row: Share + Go to Dashboard */}
+          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem' }}>
+            <button
+              onClick={shareReferral}
+              className="btn-secondary"
+              style={{ flex: 1, padding: '0.875rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+            >
+              <Share2 size={16} />
+              <span>Share My Link</span>
+            </button>
+            <button
+              onClick={onClose}
+              className="btn-primary"
+              style={{ flex: 1, padding: '0.875rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+            >
+              <span>Dashboard</span>
+              <ArrowRight size={16} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes fadeIn  { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(40px) scale(0.96) } to { opacity: 1; transform: translateY(0) scale(1) } }
+      `}</style>
+    </div>
+  )
+}
+
+/* ── Register Page ─────────────────────────────────────────────────────────── */
 export default function Register() {
-  const [showPw, setShowPw] = useState(false)
-  const [params]           = useSearchParams()
+  const [showPw, setShowPw]           = useState(false)
+  const [successData, setSuccessData] = useState(null) // holds modal data
+  const [params]                      = useSearchParams()
   const { register: registerUser, loading: authLoading } = useAuthStore()
   const navigate = useNavigate()
 
@@ -50,11 +253,25 @@ export default function Register() {
     try {
       const { confirm_password, ...payload } = data
       const res = await registerUser(payload)
-      toast.success(`Welcome, ${res.user.name}! Your ID is ${res.user_id}`)
-      navigate('/dashboard')
+
+      // Show the success popup with all details + plain-text password
+      // refCode comes from the server response (res.user.referral_code) — not computed client-side
+      setSuccessData({
+        name:     res.user.name,
+        user_id:  res.user_id,
+        email:    data.email,
+        phone:    data.phone,
+        refCode:  res.user.referral_code || `NVX${res.user_id}`,
+        password: data.password,
+      })
     } catch (err) {
       toast.error(err?.response?.data?.error || 'Registration failed. Please try again.')
     }
+  }
+
+  const handleModalClose = () => {
+    setSuccessData(null)
+    navigate('/dashboard')
   }
 
   const fields = [
@@ -230,6 +447,9 @@ export default function Register() {
 
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
+
+      {/* Success Modal */}
+      {successData && <SuccessModal data={successData} onClose={handleModalClose} />}
     </div>
   )
 }
