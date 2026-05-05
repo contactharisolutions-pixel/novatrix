@@ -106,28 +106,40 @@ router.all('/run-level-bonus', verifyCronSecret, async (req, res) => {
     const todayStr  = todayIST.toISOString().split('T')[0]
     const dayStart  = new Date(todayStr + 'T00:00:00+05:30')
 
-    // Fetch today's ROI distributions grouped by user
+    // RoiDistribution has no 'user' relation in Prisma schema — fetch raw records
     const distributions = await prisma.roiDistribution.findMany({
       where:   { created_at: { gte: dayStart } },
       orderBy: { created_at: 'asc' },
-      include: { user: { select: { user_id: true } } },
+      select:  { id: true, user_id: true, amount: true },
     })
 
-    console.log(`[LevelBonus Replay] Found ${distributions.length} distribution(s) for today (${todayStr})`)
+    // Aggregate total ROI per user_id (sum multiple packages into one matching call)
+    const byUser = {}
+    for (const d of distributions) {
+      byUser[d.user_id] = (byUser[d.user_id] || 0) + parseFloat(d.amount)
+    }
+
+    // Fetch display user_ids for logging
+    const userIds = Object.keys(byUser).map(Number)
+    const users   = await prisma.user.findMany({
+      where:  { id: { in: userIds } },
+      select: { id: true, user_id: true },
+    })
+    const userMap = Object.fromEntries(users.map(u => [u.id, u.user_id]))
+
+    console.log(`[LevelBonus Replay] Found ${distributions.length} distribution(s) for ${userIds.length} member(s) on ${todayStr}`)
 
     let processed = 0, errors = 0
-    for (const dist of distributions) {
+    for (const [dbIdStr, totalRoi] of Object.entries(byUser)) {
+      const dbId      = parseInt(dbIdStr)
+      const displayId = userMap[dbId] || 'Member'
       try {
-        await triggerROIMatchingBonus(
-          dist.user_id,
-          dist.user?.user_id || 'Member',
-          parseFloat(dist.amount),
-        )
+        await triggerROIMatchingBonus(dbId, displayId, totalRoi)
         processed++
-        console.log(`[LevelBonus Replay] ✓ Matched bonus for user ${dist.user?.user_id} — ROI $${dist.amount}`)
+        console.log(`[LevelBonus Replay] ✓ user ${displayId} — ROI $${totalRoi.toFixed(2)}`)
       } catch (err) {
         errors++
-        console.error(`[LevelBonus Replay] ✗ Error for dist #${dist.id}:`, err.message)
+        console.error(`[LevelBonus Replay] ✗ user ${displayId}:`, err.message)
       }
     }
 
@@ -138,7 +150,7 @@ router.all('/run-level-bonus', verifyCronSecret, async (req, res) => {
       date:      todayStr,
       processed,
       errors,
-      total:     distributions.length,
+      total:     userIds.length,
     })
   } catch (err) {
     console.error('[LevelBonus Replay] Fatal:', err.message)
