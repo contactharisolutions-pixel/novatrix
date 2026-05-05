@@ -167,12 +167,16 @@ async function distributeROI() {
         })
       })
 
-      // FIX #3: Run matching bonus OUTSIDE the transaction — avoids long locks and Vercel timeouts
-      // Each level bonus is its own small transaction inside triggerROIMatchingBonus
+      // Run matching bonus OUTSIDE the main transaction (avoids long lock) but AWAITED so
+      // it fully completes before the cron response is sent. On Vercel serverless, any
+      // un-awaited Promise is killed the moment the HTTP response is flushed — which is why
+      // a fire-and-forget .catch() pattern silently drops all level bonuses.
       const userObj = await prisma.user.findUnique({ where: { id: pkg.user_id }, select: { user_id: true } })
-      triggerROIMatchingBonus(pkg.user_id, userObj?.user_id || 'Member', creditable).catch(
-        (err) => console.error(`[ROI Cron] Matching bonus error for package #${pkg.id}:`, err.message)
-      )
+      try {
+        await triggerROIMatchingBonus(pkg.user_id, userObj?.user_id || 'Member', creditable)
+      } catch (matchErr) {
+        console.error(`[ROI Cron] Matching bonus error for package #${pkg.id}:`, matchErr.message)
+      }
 
       processed++
       if (isDone) completed++
