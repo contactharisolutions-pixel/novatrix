@@ -172,12 +172,12 @@ async function triggerROIMatchingBonus(memberId, memberUserId, roiAmount) {
     // Sponsor must be active AND have at least one active trade package
     if (sponsor?.status === 'active' && await hasActivePackage(sponsorId)) {
       // Count direct referrals of this sponsor who have at least one active trade package.
-      // Using TradePackage (not user.status) because a user can hold an active package
-      // while their user-level status is still 'inactive' (e.g. admin-activated packages).
-      const activeDownlineCount = await prisma.tradePackage.count({
+      // Using User.count with packages.some is the stable Prisma pattern — avoids unreliable
+      // nested relation filters on count(), and correctly counts unique investors (not packages).
+      const activeDownlineCount = await prisma.user.count({
         where: {
-          status: 'active',
-          user:   { sponsor_id: sponsorId },
+          sponsor_id: sponsorId,
+          packages:   { some: { status: 'active' } },
         },
       })
 
