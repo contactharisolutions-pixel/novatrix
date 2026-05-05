@@ -65,12 +65,12 @@ function SuccessModal({ data, onClose }) {
   }
 
   const rows = [
-    { label: 'Full Name',     value: data.name,     field: 'name'  },
-    { label: 'User ID',       value: data.user_id,  field: 'uid'   },
-    { label: 'Email',         value: data.email,    field: 'email' },
-    { label: 'Phone',         value: data.phone,    field: 'phone' },
-    { label: 'Referral Code', value: data.refCode,  field: 'ref'   },
-    { label: 'Password',      value: data.password, field: 'pw', sensitive: true },
+    { label: 'Full Name',     value: data.name,       field: 'name'  },
+    { label: 'User ID',       value: data.user_id,    field: 'uid'   },
+    { label: 'Email',         value: data.email,      field: 'email' },
+    { label: 'Phone',         value: data.phone,      field: 'phone' },
+    { label: 'Referral Code', value: data.sponsor_id, field: 'ref'   },
+    { label: 'Password',      value: data.password,   field: 'pw', sensitive: true },
   ]
 
   return (
@@ -279,12 +279,13 @@ export default function Register() {
       // Show the success popup with all details + plain-text password
       // refCode comes from the server response (res.user.referral_code) — not computed client-side
       setSuccessData({
-        name:     res.user.name,
-        user_id:  res.user_id,
-        email:    data.email,
-        phone:    data.phone,
-        refCode:  res.user.referral_code?.replace('NVX', '') || `${res.user_id}`,
-        password: data.password,
+        name:       res.user.name,
+        user_id:    res.user_id,
+        email:      data.email,
+        phone:      data.phone,
+        sponsor_id: data.referral_code || 'Direct',
+        refCode:    res.user.referral_code?.replace('NVX', '') || `${res.user_id}`,
+        password:   data.password,
       })
     } catch (err) {
       toast.error(err?.response?.data?.error || 'Registration failed. Please try again.')
