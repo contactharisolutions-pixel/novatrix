@@ -182,13 +182,17 @@ router.get('/roi', async (req, res, next) => {
       select:  { amount: true, type: true, created_at: true },
     })
 
-    // Aggregate per day — total + per-type breakdown
+    // Aggregate per IST day (UTC+5:30) — total + per-type breakdown.
+    // Using UTC dates caused bonuses on the same IST calendar day to appear on
+    // different chart dates (e.g. 00:15 IST → 18:45 UTC prev day).
+    const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
     const byDay = {}
     bonuses.forEach((b) => {
-      const day = b.created_at.toISOString().slice(0, 10)
+      const istDate = new Date(b.created_at.getTime() + IST_OFFSET_MS)
+      const day = istDate.toISOString().slice(0, 10)
       if (!byDay[day]) byDay[day] = { total: 0, trading: 0, direct: 0, level: 0, reward: 0, royalty: 0 }
-      byDay[day].total         += +b.amount
-      byDay[day][b.type]       += +b.amount
+      byDay[day].total   += +b.amount
+      byDay[day][b.type] += +b.amount
     })
 
     const roi_history = Object.entries(byDay)

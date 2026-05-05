@@ -5,7 +5,7 @@ import {
   Ticket, TrendingUp, AlertCircle, Activity,
   Zap, Network, Trophy, Crown, DollarSign,
 } from 'lucide-react'
-import { AreaChart, Area, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from 'recharts'
+import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid, Cell } from 'recharts'
 import toast from 'react-hot-toast'
 import { adminApi } from '../../store/useAdminStore'
 import { AdminPageHeader, AdminStatCard, AdminSpinner, Panel, Badge } from '../../components/admin/ui'
@@ -41,19 +41,6 @@ export default function AdminDashboard() {
 
   const { members, pending_actions, financials } = data
 
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (!active || !payload?.length) return null
-    return (
-      <div style={{
-        background: 'var(--navy-card)', border: '1px solid var(--border-light)',
-        borderRadius: 12, padding: '0.875rem 1.125rem', fontSize: '0.8125rem',
-        boxShadow: 'var(--shadow-lg)',
-      }}>
-        <p style={{ color: 'var(--text-faint)', marginBottom: '0.375rem', fontWeight: 600 }}>{label}</p>
-        <p style={{ color: 'var(--orange)', fontWeight: 800, fontSize: '1rem' }}>${payload[0].value?.toLocaleString()}</p>
-      </div>
-    )
-  }
 
   const INCOME_TYPES = [
     { key: 'trading', label: 'Daily ROI',    color: '#f97316', icon: Activity   },
@@ -186,7 +173,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* ── Profit Payout Chart (all types stacked) ── */}
+      {/* ── Profit Payout Chart — stacked bar per IST day ── */}
       <Panel style={{ padding: '1.5rem 1.75rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
@@ -196,35 +183,37 @@ export default function AdminDashboard() {
           <Badge status="LIVE" />
         </div>
         {roi.length > 0 ? (
-          <div style={{ height: 280, width: '100%' }}>
+          <div style={{ height: 300, width: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={roi} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <defs>
-                  {INCOME_TYPES.map(t => (
-                    <linearGradient key={t.key} id={`grad_${t.key}`} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%"  stopColor={t.color} stopOpacity={0.2} />
-                      <stop offset="95%" stopColor={t.color} stopOpacity={0}   />
-                    </linearGradient>
-                  ))}
-                </defs>
+              <BarChart data={roi} margin={{ top: 10, right: 10, left: 0, bottom: 0 }} barSize={36}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
-                <XAxis dataKey="date" tick={{ fill: 'var(--text-faint)', fontSize: 10, fontWeight: 600 }} axisLine={false} tickLine={false} tickFormatter={(v) => v.slice(5, 10)} dy={10} />
-                <YAxis tick={{ fill: 'var(--text-faint)', fontSize: 10, fontWeight: 600 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} dx={-10} />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fill: 'var(--text-faint)', fontSize: 10, fontWeight: 600 }}
+                  axisLine={false} tickLine={false}
+                  tickFormatter={(v) => v.slice(5, 10)}
+                  dy={8}
+                />
+                <YAxis
+                  tick={{ fill: 'var(--text-faint)', fontSize: 10, fontWeight: 600 }}
+                  axisLine={false} tickLine={false}
+                  tickFormatter={(v) => `$${v}`}
+                  dx={-8}
+                />
                 <Tooltip
                   contentStyle={{ background: 'var(--navy-card)', border: '1px solid var(--border-light)', borderRadius: 12, fontSize: '0.8rem' }}
-                  labelStyle={{ color: 'var(--text-faint)', fontWeight: 600, marginBottom: '0.5rem' }}
+                  labelStyle={{ color: 'var(--text-faint)', fontWeight: 700, marginBottom: '0.5rem' }}
                   formatter={(val, name) => [`$${(+val).toFixed(2)}`, INCOME_TYPES.find(t => t.key === name)?.label || name]}
+                  cursor={{ fill: 'rgba(255,255,255,0.03)' }}
                 />
-                <Legend formatter={(val) => INCOME_TYPES.find(t => t.key === val)?.label || val} wrapperStyle={{ fontSize: '0.75rem', paddingTop: '1rem' }} />
+                <Legend
+                  formatter={(val) => INCOME_TYPES.find(t => t.key === val)?.label || val}
+                  wrapperStyle={{ fontSize: '0.75rem', paddingTop: '1rem' }}
+                />
                 {INCOME_TYPES.map(t => (
-                  <Area key={t.key} type="monotone" dataKey={t.key} stackId="1"
-                    stroke={t.color} strokeWidth={1.5}
-                    fill={`url(#grad_${t.key})`}
-                    dot={false}
-                    activeDot={{ r: 4, stroke: 'var(--navy)', strokeWidth: 2, fill: t.color }}
-                  />
+                  <Bar key={t.key} dataKey={t.key} stackId="a" fill={t.color} radius={t.key === 'royalty' ? [4, 4, 0, 0] : [0, 0, 0, 0]} />
                 ))}
-              </AreaChart>
+              </BarChart>
             </ResponsiveContainer>
           </div>
         ) : (
