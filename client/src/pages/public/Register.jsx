@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import useAuthStore, { siteOrigin } from '../../store/useAuthStore'
+import api from '../../lib/api'
 
 const schema = z
   .object({
@@ -242,12 +243,33 @@ export default function Register() {
 
   const {
     register,
+    watch,
     handleSubmit,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(schema),
     defaultValues: { referral_code: params.get('ref') || '' },
   })
+
+  const [sponsorName, setSponsorName] = useState('')
+  const referralCode = watch('referral_code')
+
+  useEffect(() => {
+    const fetchSponsor = async () => {
+      if (!referralCode || referralCode.length < 3) {
+        setSponsorName('')
+        return
+      }
+      try {
+        const { data } = await api.get(`/public/sponsor/${referralCode}`)
+        setSponsorName(data.name)
+      } catch (err) {
+        setSponsorName('')
+      }
+    }
+    const timer = setTimeout(fetchSponsor, 500) // debounce
+    return () => clearTimeout(timer)
+  }, [referralCode])
 
   const onSubmit = async (data) => {
     try {
@@ -341,8 +363,15 @@ export default function Register() {
             {/* Text fields */}
             {fields.map(({ name, label, icon: Icon, placeholder, type, optional }) => (
               <div key={name}>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
-                  {label} {optional && <span style={{ color: 'var(--text-faint)', fontWeight: 400, fontSize: '0.78rem' }}>(optional)</span>}
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
+                  <span>
+                    {label} {optional && <span style={{ color: 'var(--text-faint)', fontWeight: 400, fontSize: '0.78rem' }}>(optional)</span>}
+                  </span>
+                  {name === 'referral_code' && sponsorName && (
+                    <span style={{ color: 'var(--cyan)', fontSize: '0.78rem', fontWeight: 700, animation: 'fadeIn 0.3s ease' }}>
+                      Member: {sponsorName}
+                    </span>
+                  )}
                 </label>
                 <div style={{ position: 'relative' }}>
                   <Icon size={15} style={{
