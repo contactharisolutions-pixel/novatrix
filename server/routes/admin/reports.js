@@ -127,11 +127,16 @@ router.get('/business', async (req, res, next) => {
 // ─── GET /api/admin/reports/incomes ─────────────────────────
 // Detailed income reporting for ROI, Direct, Level, Reward, Royalty
 router.get('/incomes', async (req, res, next) => {
-  const type   = req.query.type   || 'trading'
+  // The client tab uses 'roi' as the ID but the Bonus enum stores it as 'trading'
+  const rawType = req.query.type || 'roi'
+  const type    = rawType === 'roi' ? 'trading' : rawType
+
   const search = req.query.search || ''
   const from   = req.query.from ? new Date(req.query.from) : undefined
-  const to     = req.query.to   ? new Date(req.query.to)   : undefined
-  const page   = parseInt(req.query.page || '1')
+  // Make 'to' end-of-day so records created ON that date are included
+  const toRaw  = req.query.to
+  const to     = toRaw ? (() => { const d = new Date(toRaw); d.setHours(23, 59, 59, 999); return d })() : undefined
+  const page   = parseInt(req.query.page  || '1')
   const limit  = parseInt(req.query.limit || '20')
 
   try {
@@ -155,7 +160,7 @@ router.get('/incomes', async (req, res, next) => {
         take: limit,
         orderBy: { created_at: 'desc' },
         include: {
-          user: { select: { user_id: true, name: true } },
+          user:      { select: { user_id: true, name: true } },
           from_user: { select: { user_id: true, name: true } }
         }
       }),
