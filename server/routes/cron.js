@@ -91,6 +91,61 @@ router.all('/run', verifyCronSecret, async (req, res) => {
   }
 })
 
+// ─── POST /api/cron/run-level-bonus ───────────────────────────
+// One-shot: re-fires triggerROIMatchingBonus for every RoiDistribution
+// record created today (IST). Useful to backfill level income when ROI
+// already ran but the matching bonus was dropped (e.g. fire-and-forget bug).
+router.all('/run-level-bonus', verifyCronSecret, async (req, res) => {
+  const { triggerROIMatchingBonus } = require('../services/bonusEngine')
+  const prisma = require('../lib/prisma')
+  const startTime = Date.now()
+
+  try {
+    const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
+    const todayIST  = new Date(Date.now() + IST_OFFSET_MS)
+    const todayStr  = todayIST.toISOString().split('T')[0]
+    const dayStart  = new Date(todayStr + 'T00:00:00+05:30')
+
+    // Fetch today's ROI distributions grouped by user
+    const distributions = await prisma.roiDistribution.findMany({
+      where:   { created_at: { gte: dayStart } },
+      orderBy: { created_at: 'asc' },
+      include: { user: { select: { user_id: true } } },
+    })
+
+    console.log(`[LevelBonus Replay] Found ${distributions.length} distribution(s) for today (${todayStr})`)
+
+    let processed = 0, errors = 0
+    for (const dist of distributions) {
+      try {
+        await triggerROIMatchingBonus(
+          dist.user_id,
+          dist.user?.user_id || 'Member',
+          parseFloat(dist.amount),
+        )
+        processed++
+        console.log(`[LevelBonus Replay] ✓ Matched bonus for user ${dist.user?.user_id} — ROI $${dist.amount}`)
+      } catch (err) {
+        errors++
+        console.error(`[LevelBonus Replay] ✗ Error for dist #${dist.id}:`, err.message)
+      }
+    }
+
+    const duration = ((Date.now() - startTime) / 1000).toFixed(2)
+    res.json({
+      success:   true,
+      duration:  `${duration}s`,
+      date:      todayStr,
+      processed,
+      errors,
+      total:     distributions.length,
+    })
+  } catch (err) {
+    console.error('[LevelBonus Replay] Fatal:', err.message)
+    res.status(500).json({ success: false, error: err.message })
+  }
+})
+
 // ─── GET /api/cron/health ──────────────────────────────────────
 // Simple health probe — no secret required — for uptime monitors
 router.get('/health', (_req, res) => {
