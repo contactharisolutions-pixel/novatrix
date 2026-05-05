@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom'
 import {
   Users, CreditCard, ArrowUpFromLine, ShieldCheck,
   Ticket, TrendingUp, AlertCircle, Activity,
+  Zap, Network, Trophy, Crown, DollarSign,
 } from 'lucide-react'
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+import { AreaChart, Area, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from 'recharts'
 import toast from 'react-hot-toast'
 import { adminApi } from '../../store/useAdminStore'
 import { AdminPageHeader, AdminStatCard, AdminSpinner, Panel, Badge } from '../../components/admin/ui'
@@ -54,9 +55,17 @@ export default function AdminDashboard() {
     )
   }
 
+  const INCOME_TYPES = [
+    { key: 'trading', label: 'Daily ROI',    color: '#f97316', icon: Activity   },
+    { key: 'direct',  label: 'Direct Bonus', color: '#22d3ee', icon: Zap        },
+    { key: 'level',   label: 'Level Income', color: '#a78bfa', icon: Network    },
+    { key: 'reward',  label: 'Rewards',      color: '#f59e0b', icon: Trophy     },
+    { key: 'royalty', label: 'Royalty',      color: '#34d399', icon: Crown      },
+  ]
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap-lg)' }}>
-      <AdminPageHeader title="Admin Dashboard" subtitle="Overview of platform users and financial stats" />
+      <AdminPageHeader title="System Overview" subtitle="Overview of platform users and financial stats" />
 
       {/* Primary stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 'var(--gap-md)' }} id="admin-stat-grid">
@@ -128,14 +137,13 @@ export default function AdminDashboard() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gap-sm)' }} id="admin-fin-grid">
             {[
-              { label: 'Total Deposits',    value: financials.total_deposits,   color: 'var(--green)'  },
-              { label: 'Total Withdrawals', value: financials.total_withdrawals, color: 'var(--red)'    },
-              { label: 'Profits Paid',     value: financials.total_bonuses,    color: 'var(--orange)' },
+              { label: 'Total Deposits',    value: financials.total_deposits,    color: 'var(--green)'  },
+              { label: 'Total Withdrawals', value: financials.total_withdrawals,  color: 'var(--red)'    },
+              { label: 'Total Profits',     value: financials.total_bonuses,      color: 'var(--orange)' },
             ].map(({ label, value, color }) => (
               <div key={label} style={{
                 background: 'var(--navy-card)', border: '1px solid var(--border)',
                 borderRadius: 'var(--radius-md)', padding: '1.5rem', textAlign: 'center',
-                transition: 'var(--transition-normal)',
               }}>
                 <p style={{ fontSize: '1.25rem', fontWeight: 800, color, marginBottom: '0.5rem', fontFamily: 'JetBrains Mono, monospace' }}>
                   ${(+value).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
@@ -147,7 +155,38 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* ROI Distribution Chart */}
+      {/* ── All Income KPI Cards ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap-md)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+          <DollarSign size={18} style={{ color: 'var(--cyan)' }} />
+          <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>All Income Distribution</h3>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 'var(--gap-sm)' }} id="admin-income-grid">
+          {INCOME_TYPES.map(({ key, label, color, icon: Icon }) => {
+            const fieldMap = { trading: 'roi_paid', direct: 'direct_paid', level: 'level_paid', reward: 'reward_paid', royalty: 'royalty_paid' }
+            const val = financials[fieldMap[key]] || 0
+            return (
+              <div key={key} style={{
+                background: 'var(--navy-card)', border: `1px solid ${color}22`,
+                borderRadius: 'var(--radius-md)', padding: '1.25rem',
+                display: 'flex', flexDirection: 'column', gap: '0.75rem',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <p style={{ fontSize: '0.7rem', color: 'var(--text-faint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</p>
+                  <div style={{ width: 28, height: 28, borderRadius: 8, background: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon size={14} style={{ color }} />
+                  </div>
+                </div>
+                <p style={{ fontSize: '1.25rem', fontWeight: 900, color, fontFamily: 'JetBrains Mono, monospace' }}>
+                  ${(+val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* ── Profit Payout Chart (all types stacked) ── */}
       <Panel style={{ padding: '1.5rem 1.75rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
@@ -157,20 +196,34 @@ export default function AdminDashboard() {
           <Badge status="LIVE" />
         </div>
         {roi.length > 0 ? (
-          <div style={{ height: 260, width: '100%' }}>
+          <div style={{ height: 280, width: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={roi} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="roiGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%"  stopColor="var(--orange)" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="var(--orange)" stopOpacity={0}    />
-                  </linearGradient>
+                  {INCOME_TYPES.map(t => (
+                    <linearGradient key={t.key} id={`grad_${t.key}`} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor={t.color} stopOpacity={0.2} />
+                      <stop offset="95%" stopColor={t.color} stopOpacity={0}   />
+                    </linearGradient>
+                  ))}
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
                 <XAxis dataKey="date" tick={{ fill: 'var(--text-faint)', fontSize: 10, fontWeight: 600 }} axisLine={false} tickLine={false} tickFormatter={(v) => v.slice(5, 10)} dy={10} />
                 <YAxis tick={{ fill: 'var(--text-faint)', fontSize: 10, fontWeight: 600 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} dx={-10} />
-                <Tooltip content={<CustomTooltip />} />
-                <Area type="monotone" dataKey="total" stroke="var(--orange)" strokeWidth={3} fill="url(#roiGrad)" dot={false} activeDot={{ r: 6, stroke: 'var(--navy)', strokeWidth: 2, fill: 'var(--orange)' }} />
+                <Tooltip
+                  contentStyle={{ background: 'var(--navy-card)', border: '1px solid var(--border-light)', borderRadius: 12, fontSize: '0.8rem' }}
+                  labelStyle={{ color: 'var(--text-faint)', fontWeight: 600, marginBottom: '0.5rem' }}
+                  formatter={(val, name) => [`$${(+val).toFixed(2)}`, INCOME_TYPES.find(t => t.key === name)?.label || name]}
+                />
+                <Legend formatter={(val) => INCOME_TYPES.find(t => t.key === val)?.label || val} wrapperStyle={{ fontSize: '0.75rem', paddingTop: '1rem' }} />
+                {INCOME_TYPES.map(t => (
+                  <Area key={t.key} type="monotone" dataKey={t.key} stackId="1"
+                    stroke={t.color} strokeWidth={1.5}
+                    fill={`url(#grad_${t.key})`}
+                    dot={false}
+                    activeDot={{ r: 4, stroke: 'var(--navy)', strokeWidth: 2, fill: t.color }}
+                  />
+                ))}
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -183,17 +236,20 @@ export default function AdminDashboard() {
 
       <style>{`
         @media (max-width: 639px) {
-          #admin-stat-grid { grid-template-columns: 1fr !important; }
+          #admin-stat-grid    { grid-template-columns: 1fr !important; }
           #admin-pending-grid { grid-template-columns: 1fr !important; }
-          #admin-fin-grid { grid-template-columns: 1fr !important; }
+          #admin-fin-grid     { grid-template-columns: 1fr !important; }
+          #admin-income-grid  { grid-template-columns: repeat(2, 1fr) !important; }
         }
         @media (min-width: 640px) and (max-width: 1023px) {
           #admin-pending-grid { grid-template-columns: repeat(2, 1fr) !important; }
-          #admin-fin-grid { grid-template-columns: repeat(3, 1fr) !important; }
+          #admin-fin-grid     { grid-template-columns: repeat(3, 1fr) !important; }
+          #admin-income-grid  { grid-template-columns: repeat(3, 1fr) !important; }
         }
         @media (min-width: 1024px) {
-          #admin-stat-grid { grid-template-columns: repeat(4, 1fr) !important; }
+          #admin-stat-grid    { grid-template-columns: repeat(4, 1fr) !important; }
           #admin-pending-grid { grid-template-columns: repeat(4, 1fr) !important; }
+          #admin-income-grid  { grid-template-columns: repeat(5, 1fr) !important; }
         }
         @media (min-width: 1280px) {
           #admin-mid-grid { grid-template-columns: 1.2fr 1fr !important; }

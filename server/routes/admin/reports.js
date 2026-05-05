@@ -171,21 +171,39 @@ router.get('/incomes', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 // ─── GET /api/admin/reports/roi ───────────────────────────────
-// Last 30 days ROI distribution summary
+// Last 30 days ALL-TYPE profit payout summary (aggregated by day)
+// Used by the admin dashboard "Profit Payout Chart"
 router.get('/roi', async (req, res, next) => {
   try {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-    const distributions = await prisma.roiDistribution.findMany({
+    const bonuses = await prisma.bonus.findMany({
       where:   { created_at: { gte: thirtyDaysAgo } },
       orderBy: { created_at: 'asc' },
-      select:  { amount: true, created_at: true },
+      select:  { amount: true, type: true, created_at: true },
     })
+
+    // Aggregate per day — total + per-type breakdown
     const byDay = {}
-    distributions.forEach((d) => {
-      const day = d.created_at.toISOString().slice(0, 10)
-      byDay[day] = (byDay[day] || 0) + +d.amount
+    bonuses.forEach((b) => {
+      const day = b.created_at.toISOString().slice(0, 10)
+      if (!byDay[day]) byDay[day] = { total: 0, trading: 0, direct: 0, level: 0, reward: 0, royalty: 0 }
+      byDay[day].total         += +b.amount
+      byDay[day][b.type]       += +b.amount
     })
-    res.json({ roi_history: Object.entries(byDay).map(([date, total]) => ({ date, total: +total.toFixed(2) })) })
+
+    const roi_history = Object.entries(byDay)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, vals]) => ({
+        date,
+        total:   +vals.total.toFixed(2),
+        trading: +vals.trading.toFixed(2),
+        direct:  +vals.direct.toFixed(2),
+        level:   +vals.level.toFixed(2),
+        reward:  +vals.reward.toFixed(2),
+        royalty: +vals.royalty.toFixed(2),
+      }))
+
+    res.json({ roi_history })
   } catch (err) { next(err) }
 })
 
