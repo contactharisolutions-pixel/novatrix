@@ -31,21 +31,32 @@ router.get('/summary', async (req, res, next) => {
 })
 
 // ─── GET /api/earnings/history ────────────────────────────────
-// Last 30 days of daily ROI aggregated per day for line chart
+// Last 30 days of ALL bonus types aggregated per day for the area chart.
+// Previously only counted 'trading' type — now sums all income types so the
+// chart total matches the "Total Earned" KPI card.
 router.get('/history', async (req, res, next) => {
   try {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
     const records = await prisma.bonus.findMany({
-      where:   { user_id: req.user.id, type: 'trading', created_at: { gte: thirtyDaysAgo } },
+      where:   { user_id: req.user.id, created_at: { gte: thirtyDaysAgo } }, // all types
       orderBy: { created_at: 'asc' },
       select:  { amount: true, created_at: true },
     })
+
+    // Aggregate by IST day (UTC+5:30) so chart dates align with member's timezone
+    const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
     const byDay = {}
     records.forEach((r) => {
-      const day = r.created_at.toISOString().slice(0, 10)
+      const istDate = new Date(r.created_at.getTime() + IST_OFFSET_MS)
+      const day = istDate.toISOString().slice(0, 10)
       byDay[day] = (byDay[day] || 0) + +r.amount
     })
-    res.json({ history: Object.entries(byDay).map(([date, earning]) => ({ date, earning: +earning.toFixed(2) })) })
+
+    res.json({
+      history: Object.entries(byDay)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, earning]) => ({ date, earning: +earning.toFixed(2) })),
+    })
   } catch (err) { next(err) }
 })
 
