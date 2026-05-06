@@ -101,21 +101,34 @@ export default function Dashboard() {
         }
       />
 
-      {/* 9 KPI Stats grid */}
+      {/* KPI Stats grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', gap: 'var(--gap-md)' }} id="dash-stats">
         {/* Team Stats */}
         <StatCard label="Total Team"         value={stats?.team_total ?? 0}        icon={Users}          color="cyan"   sub="Total downline members" />
         <StatCard label="Total Active Team"  value={stats?.active_team ?? 0}       icon={ShieldCheck}     color="green"  sub="Active trading partners" />
         <StatCard label="Today's Joining"    value={stats?.today_joining ?? 0}     icon={UserPlus}       color="purple" sub="New members today" />
         
-        {/* Daily Stats */}
+        {/* Business Stats */}
         <StatCard label="Today's Business"   value={fmt(stats?.today_business)}    icon={BarChart3}      color="cyan"   sub="Total team volume today" />
+        <StatCard label="Total Team Business" value={fmt(stats?.total_team_business)} icon={BarChart3}   color="blue"   sub="Lifetime team volume" />
         <StatCard label="Today's Activation" value={stats?.today_activation ?? 0}  icon={Zap}            color="orange" sub="New activations today" />
+
+        {/* ROI & Profit */}
+        <StatCard label="Today's ROI"        value={fmt(stats?.today_roi)}         icon={TrendingUp}     color="green"  sub="ROI earned today" />
+        <StatCard label="Total ROI"          value={fmt(stats?.total_roi)}         icon={TrendingUp}     color="emerald" sub="Lifetime ROI earned" />
         <StatCard label="Withdraw Wallet"    value={fmt(stats?.income_wallet)}     icon={Wallet}         color="green"  sub="Available profit" />
         
-        {/* Wallet Stats */}
+        {/* Sponsor & Level Income */}
+        <StatCard label="Today's Sponsor"    value={fmt(stats?.today_sponsor_income)} icon={Users}       color="purple" sub="Sponsor income today" />
+        <StatCard label="Total Sponsor"      value={fmt(stats?.total_sponsor_income)} icon={Users}       color="violet" sub="Lifetime sponsor income" />
+        <StatCard label="Today's Level"      value={fmt(stats?.today_level_income)}  icon={Activity}     color="orange" sub="Level income today" />
+        
+        {/* Wallet & Withdrawal */}
+        <StatCard label="Total Level"        value={fmt(stats?.total_level_income)}  icon={Activity}     color="amber"  sub="Lifetime level income" />
         <StatCard label="Fund Wallet"        value={fmt(stats?.fund_wallet)}       icon={DollarSign}     color="purple" sub="Capital for activation" />
         <StatCard label="Total Topup"        value={fmt(stats?.total_topup)}       icon={TrendingUp}     color="cyan"   sub="Lifetime deposits" />
+        
+        {/* Withdrawals */}
         <StatCard label="Total Withdrawal"   value={fmt(stats?.total_withdraw)}    icon={TrendingDown}   color="red"    sub="Lifetime cashouts" />
       </div>
 
@@ -212,6 +225,9 @@ export default function Dashboard() {
         }
         @media (min-width: 1024px) {
           #dash-stats { grid-template-columns: repeat(3, 1fr) !important; }
+        }
+        @media (min-width: 1280px) {
+          #dash-stats { grid-template-columns: repeat(4, 1fr) !important; }
         }
       `}</style>
     </div>

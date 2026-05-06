@@ -20,7 +20,10 @@ router.get('/dashboard', async (req, res, next) => {
     })
     if (!user) return res.status(404).json({ error: 'User not found' })
 
-    const [totalTopup, totalWithdraw, totalEarning, teamCount, activeTeamCount, todayJoiningCount, todayBusinessSum, todayActivationCount] = await Promise.all([
+    const [
+      totalTopup, totalWithdraw, totalEarning, teamCount, activeTeamCount, todayJoiningCount, todayBusinessSum, todayActivationCount,
+      totalTeamBusinessSum, todayRoiSum, totalRoiSum, todaySponsorSum, totalSponsorSum, todayLevelSum, totalLevelSum
+    ] = await Promise.all([
       // Total Topup = total activated trade packages (self + admin-activated)
       prisma.tradePackage.aggregate({ where: { user_id: req.user.id }, _sum: { amount: true } }),
       prisma.withdrawal.aggregate({ where: { user_id: req.user.id, status: 'approved' }, _sum: { amount: true } }),
@@ -84,6 +87,56 @@ router.get('/dashboard', async (req, res, next) => {
           SELECT user_id FROM "TradePackage" 
           WHERE (started_at AT TIME ZONE 'Asia/Kolkata')::date < (NOW() AT TIME ZONE 'Asia/Kolkata')::date
         )
+      `,
+
+      // Total Team Business (Recursive Sum of Trade Packages)
+      prisma.$queryRaw`
+        WITH RECURSIVE tree AS (
+          SELECT id FROM "User" WHERE sponsor_id = ${req.user.id}
+          UNION ALL
+          SELECT u.id FROM "User" u INNER JOIN tree t ON u.sponsor_id = t.id
+        )
+        SELECT SUM(amount) as total FROM "TradePackage" 
+        WHERE user_id IN (SELECT id FROM tree)
+      `,
+
+      // Today's ROI
+      prisma.$queryRaw`
+        SELECT SUM(amount) as total FROM "Bonus"
+        WHERE user_id = ${req.user.id} AND type = 'trading'::"BonusType"
+        AND (created_at AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date
+      `,
+
+      // Total ROI
+      prisma.$queryRaw`
+        SELECT SUM(amount) as total FROM "Bonus"
+        WHERE user_id = ${req.user.id} AND type = 'trading'::"BonusType"
+      `,
+
+      // Today's Sponsor Income
+      prisma.$queryRaw`
+        SELECT SUM(amount) as total FROM "Bonus"
+        WHERE user_id = ${req.user.id} AND type = 'direct'::"BonusType"
+        AND (created_at AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date
+      `,
+
+      // Total Sponsor Income
+      prisma.$queryRaw`
+        SELECT SUM(amount) as total FROM "Bonus"
+        WHERE user_id = ${req.user.id} AND type = 'direct'::"BonusType"
+      `,
+
+      // Today's Level Income
+      prisma.$queryRaw`
+        SELECT SUM(amount) as total FROM "Bonus"
+        WHERE user_id = ${req.user.id} AND type = 'level'::"BonusType"
+        AND (created_at AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date
+      `,
+
+      // Total Level Income
+      prisma.$queryRaw`
+        SELECT SUM(amount) as total FROM "Bonus"
+        WHERE user_id = ${req.user.id} AND type = 'level'::"BonusType"
       `
     ])
 
@@ -100,6 +153,13 @@ router.get('/dashboard', async (req, res, next) => {
         today_joining:  Number(todayJoiningCount[0]?.count || 0),
         today_business: Number(todayBusinessSum[0]?.total || 0),
         today_activation: Number(todayActivationCount[0]?.count || 0),
+        total_team_business: Number(totalTeamBusinessSum[0]?.total || 0),
+        today_roi: Number(todayRoiSum[0]?.total || 0),
+        total_roi: Number(totalRoiSum[0]?.total || 0),
+        today_sponsor_income: Number(todaySponsorSum[0]?.total || 0),
+        total_sponsor_income: Number(totalSponsorSum[0]?.total || 0),
+        today_level_income: Number(todayLevelSum[0]?.total || 0),
+        total_level_income: Number(totalLevelSum[0]?.total || 0),
       },
     })
   } catch (err) { next(err) }
