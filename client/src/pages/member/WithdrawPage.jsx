@@ -12,7 +12,7 @@ const FEE_PERCENT = 10
 
 const schema = z.object({
   amount: z.coerce.number()
-    .min(20, 'Minimum withdrawal is $20')
+    .min(10, 'Minimum withdrawal is $10')
     .refine(val => val % 10 === 0, 'Amount must be in multiples of $10'),
   pin:    z.string().length(6, 'Enter your 6-digit transaction PIN'),
 })
@@ -132,7 +132,7 @@ export default function WithdrawPage() {
                     <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Withdrawal Amount</label>
                     <div style={{ position: 'relative' }}>
                       <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)', fontSize: '0.875rem', fontWeight: 600 }}>$</span>
-                      <input {...register('amount')} type="number" min={20} step={10} max={balance} placeholder="Min. $20 (Multiples of $10)" className="input" style={{ paddingLeft: '2rem' }} autoComplete="off" />
+                      <input {...register('amount')} type="number" min={10} step={10} max={balance} placeholder="Min. $10 (Multiples of $10)" className="input" style={{ paddingLeft: '2rem' }} autoComplete="off" />
                     </div>
                     {errors.amount && <p style={{ color: 'var(--red)', fontSize: '0.75rem', marginTop: '0.5rem' }}>{errors.amount.message}</p>}
                   </div>
@@ -184,7 +184,7 @@ export default function WithdrawPage() {
                 <ul style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.8, paddingLeft: '1.25rem' }}>
                   <li>Withdrawal Days: <strong>Monday to Friday</strong></li>
                   <li>Withdrawal Time: <strong>6:00 AM to 11:00 AM IST</strong></li>
-                  <li>Minimum amount: <strong>$20.00</strong></li>
+                  <li>Minimum amount: <strong>$10.00</strong></li>
                   <li>Amount must be in <strong>multiples of $10</strong></li>
                   <li>Processing fee: <strong>{FEE_PERCENT}% per request</strong></li>
                   <li>Withdrawals are processed to your registered BEP20 address.</li>

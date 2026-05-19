@@ -28,14 +28,14 @@ router.post('/request', async (req, res, next) => {
 
   // 2. Amount Validation
   const amt = parseFloat(amount)
-  if (!amt || amt < 20) {
-    return res.status(400).json({ error: 'Minimum withdrawal amount is $20.' })
+  if (!amt || amt < 10) {
+    return res.status(400).json({ error: 'Minimum withdrawal amount is $10.' })
   }
   if (amt > 5000) {
     return res.status(400).json({ error: 'Maximum withdrawal amount is $5,000 per request.' })
   }
   if (amt % 10 !== 0) {
-    return res.status(400).json({ error: 'Withdrawal amount must be in multiples of $10 (e.g., $20, $30, $40).' })
+    return res.status(400).json({ error: 'Withdrawal amount must be in multiples of $10 (e.g., $10, $20, $30).' })
   }
 
   try {
