@@ -151,36 +151,43 @@ async function triggerROIMatchingBonus(memberId, memberUserId, roiAmount) {
   const rates = await getCommissionRates()
   const LEVEL_RATES = rates.levels
 
-  let currentId = memberId
   let level = 1
 
+  const member = await prisma.user.findUnique({
+    where: { id: memberId },
+    select: { sponsor_id: true }
+  });
+  let sponsorId = member?.sponsor_id;
+
   // Walk up the sponsor chain up to 15 levels
-  while (level <= 15) {
-    const current = await prisma.user.findUnique({
-      where:  { id: currentId },
-      select: { sponsor_id: true },
-    })
-    if (!current?.sponsor_id) break
-
-    const sponsorId = current.sponsor_id
-
+  while (level <= 15 && sponsorId) {
     const sponsor = await prisma.user.findUnique({
-      where:  { id: sponsorId },
-      select: { status: true },
-    })
+      where: { id: sponsorId },
+      select: {
+        sponsor_id: true,
+        status: true,
+        packages: {
+          where: { status: 'active' },
+          take: 1,
+          select: { id: true }
+        },
+        _count: {
+          select: {
+            referrals: {
+              where: { packages: { some: { status: 'active' } } }
+            }
+          }
+        }
+      }
+    });
+
+    if (!sponsor) break;
+
+    const hasActivePkg = sponsor.packages.length > 0;
+    const activeDownlineCount = sponsor._count.referrals;
 
     // Sponsor must be active AND have at least one active trade package
-    if (sponsor?.status === 'active' && await hasActivePackage(sponsorId)) {
-      // Count direct referrals of this sponsor who have at least one active trade package.
-      // Using User.count with packages.some is the stable Prisma pattern — avoids unreliable
-      // nested relation filters on count(), and correctly counts unique investors (not packages).
-      const activeDownlineCount = await prisma.user.count({
-        where: {
-          sponsor_id: sponsorId,
-          packages:   { some: { status: 'active' } },
-        },
-      })
-
+    if (sponsor.status === 'active' && hasActivePkg) {
       // Gate: sponsor must have at least `level` active investing referrals to earn at this depth
       if (activeDownlineCount >= level) {
         const rate     = LEVEL_RATES[level] || 0
@@ -202,7 +209,7 @@ async function triggerROIMatchingBonus(memberId, memberUserId, roiAmount) {
       }
     }
 
-    currentId = sponsorId
+    sponsorId = sponsor.sponsor_id
     level++
   }
 }
