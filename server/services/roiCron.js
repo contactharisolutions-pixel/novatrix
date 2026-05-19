@@ -208,9 +208,15 @@ function startROICron() {
   }
 
   cron.schedule('0 0 * * *', async () => {
-    const today = new Date()
-    const day   = today.getDay()
-    const date  = today.getDate()
+    // Use IST offset math to get reliable IST day-of-week.
+    // When this fires at 00:00 IST, UTC is still 18:30 the *previous* day,
+    // so `new Date().getDay()` in UTC returns the WRONG weekday.
+    const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
+    const istNow = new Date(Date.now() + IST_OFFSET_MS)
+    const day    = istNow.getUTCDay()   // 0=Sun … 6=Sat (correctly in IST)
+    const date   = istNow.getUTCDate()  // day-of-month in IST
+
+    console.log(`[ROI Cron] Firing — IST: ${istNow.toISOString()}, day=${day}, date=${date}`)
 
     if (date === 1) await distributeMonthlyRoyalty()
     if (day >= 1 && day <= 5) await distributeROI()
