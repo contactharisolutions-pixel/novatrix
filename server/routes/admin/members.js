@@ -221,7 +221,7 @@ router.post('/:id/activate-package', async (req, res, next) => {
 
     // Trigger bonuses for target's sponsor chain
     if (target.sponsor_id) {
-      triggerDirectAndLevelBonus(target.id, amt).catch(console.error)
+      triggerDirectAndLevelBonus(target.id, amt, new Date()).catch(console.error)
     }
     // Instant rank/royalty re-evaluation
     processRewards().catch(console.error)

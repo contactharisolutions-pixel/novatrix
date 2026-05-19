@@ -134,7 +134,7 @@ router.post('/activate-for-other', async (req, res, next) => {
 
     // Trigger bonuses + instant rank/royalty checks for target's sponsor chain
     if (target.sponsor_id) {
-      triggerDirectAndLevelBonus(target.id, amt).catch(console.error)
+      triggerDirectAndLevelBonus(target.id, amt, new Date()).catch(console.error)
     }
     // Performance rank and royalty rank re-evaluated immediately after activation
     processRewards().catch(console.error)
@@ -225,8 +225,9 @@ router.post('/invest', async (req, res, next) => {
     })
 
     // Trigger direct + level bonuses for sponsor chain
+    // Pass pkg.started_at so eligibility is checked against the exact activation time
     if (user.sponsor_id) {
-      triggerDirectAndLevelBonus(req.user.id, parseFloat(amount)).catch(console.error)
+      triggerDirectAndLevelBonus(req.user.id, parseFloat(amount), pkg.started_at).catch(console.error)
     }
     // Performance rank and royalty rank re-evaluated immediately after activation
     processRewards().catch(console.error)

@@ -4,7 +4,9 @@
  *
  * Rules:
  * - Direct Referral Bonus: 5% of package amount, paid on activation.
- *   Sponsor must be active AND have at least one active trade package.
+ *   Sponsor must be active AND have activated their own trade package
+ *   ON OR BEFORE the member's package activation date.
+ *   If sponsor activated AFTER the member → bonus is flushed (not paid).
  * - ROI Matching Bonus: 15-level % of daily ROI, paid daily via cron.
  *   Each level's sponsor must be active AND have at least one active trade package.
  */
@@ -92,12 +94,14 @@ async function hasActivePackage(userId) {
  * Trigger direct referral bonus (5%) when a member activates a trade package.
  * Conditions:
  *  - Sponsor must have status === 'active'
- *  - Sponsor must have at least one active trade package
+ *  - Sponsor must have activated their OWN trade package ON OR BEFORE
+ *    the member's activation date. (Sponsor who joined late gets $0 — bonus flushed)
  *
- * @param {number} memberId   - The member who invested
- * @param {number} investment - The invested amount
+ * @param {number} memberId      - The member who invested
+ * @param {number} investment    - The invested amount
+ * @param {Date}   activatedAt   - When the member's package was activated (defaults to now)
  */
-async function triggerDirectAndLevelBonus(memberId, investment) {
+async function triggerDirectAndLevelBonus(memberId, investment, activatedAt = new Date()) {
   const rates = await getCommissionRates()
 
   const current = await prisma.user.findUnique({ 
@@ -108,29 +112,45 @@ async function triggerDirectAndLevelBonus(memberId, investment) {
 
   const sponsorId = current.sponsor_id
   
-  // Check if sponsor is active
+  // Check if sponsor is active AND had an active package on/before member's activation
   const sponsor = await prisma.user.findUnique({ 
     where: { id: sponsorId },
     select: { status: true }
   })
 
-  // Direct referral bonus: sponsor only needs to be active — no own package required.
-  // hasActivePackage gate applies only to ROI level matching bonus (triggerROIMatchingBonus).
-  if (sponsor?.status === 'active') {
-    const directBonusAmt = parseFloat((investment * rates.direct / 100).toFixed(2))
-    if (directBonusAmt > 0) {
-      await prisma.$transaction(async (tx) => {
-        await creditBonus(
-          tx,
-          sponsorId,
-          directBonusAmt,
-          'direct',
-          memberId,
-          1,
-          `Direct referral bonus from ${current.user_id}`
-        )
-      })
-    }
+  if (sponsor?.status !== 'active') return
+
+  // KEY RULE: sponsor's earliest package must have been activated <= member's activation date
+  const sponsorEarliestPkg = await prisma.tradePackage.findFirst({
+    where:   { user_id: sponsorId, status: 'active' },
+    orderBy: { started_at: 'asc' },
+    select:  { id: true, started_at: true },
+  })
+
+  if (!sponsorEarliestPkg) {
+    console.log(`[DirectBonus] Sponsor #${sponsorId} has no active package — bonus flushed for member #${memberId}`)
+    return
+  }
+
+  if (new Date(sponsorEarliestPkg.started_at) > new Date(activatedAt)) {
+    console.log(`[DirectBonus] Sponsor #${sponsorId} activated AFTER member #${memberId} — bonus flushed (sponsor: ${sponsorEarliestPkg.started_at}, member: ${activatedAt})`)
+    return
+  }
+
+  // Sponsor is eligible — credit direct bonus
+  const directBonusAmt = parseFloat((investment * rates.direct / 100).toFixed(2))
+  if (directBonusAmt > 0) {
+    await prisma.$transaction(async (tx) => {
+      await creditBonus(
+        tx,
+        sponsorId,
+        directBonusAmt,
+        'direct',
+        memberId,
+        1,
+        `Direct referral bonus from ${current.user_id}`
+      )
+    })
   }
 }
 
