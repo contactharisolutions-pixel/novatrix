@@ -151,6 +151,13 @@ async function triggerROIMatchingBonus(memberId, memberUserId, roiAmount) {
   const rates = await getCommissionRates()
   const LEVEL_RATES = rates.levels
 
+  // Compute today's IST date range for idempotency check
+  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
+  const nowIST        = new Date(Date.now() + IST_OFFSET_MS)
+  const todayStr      = nowIST.toISOString().split('T')[0]  // e.g. '2026-05-19'
+  const dayStart      = new Date(todayStr + 'T00:00:00+05:30')
+  const dayEnd        = new Date(todayStr + 'T23:59:59+05:30')
+
   let level = 1
 
   const member = await prisma.user.findUnique({
@@ -166,15 +173,19 @@ async function triggerROIMatchingBonus(memberId, memberUserId, roiAmount) {
       select: {
         sponsor_id: true,
         status: true,
+        // FIX: package must have been STARTED on or before today (not just currently active)
+        // Prevents a sponsor from earning level bonuses on distributions that occurred
+        // before their own package was activated.
         packages: {
-          where: { status: 'active' },
+          where: { status: 'active', started_at: { lte: new Date() } },
           take: 1,
-          select: { id: true }
+          select: { id: true, started_at: true }
         },
         _count: {
           select: {
+            // FIX: downline must also have activated their package on or before today
             referrals: {
-              where: { packages: { some: { status: 'active' } } }
+              where: { packages: { some: { status: 'active', started_at: { lte: new Date() } } } }
             }
           }
         }
@@ -183,7 +194,7 @@ async function triggerROIMatchingBonus(memberId, memberUserId, roiAmount) {
 
     if (!sponsor) break;
 
-    const hasActivePkg = sponsor.packages.length > 0;
+    const hasActivePkg        = sponsor.packages.length > 0;
     const activeDownlineCount = sponsor._count.referrals;
 
     // Sponsor must be active AND have at least one active trade package
@@ -193,18 +204,33 @@ async function triggerROIMatchingBonus(memberId, memberUserId, roiAmount) {
         const rate     = LEVEL_RATES[level] || 0
         const bonusAmt = parseFloat((roiAmount * rate / 100).toFixed(2))
         if (bonusAmt > 0) {
-          // Each bonus credit is its own small atomic transaction — avoids giant lock
-          await prisma.$transaction(async (tx) => {
-            await creditBonus(
-              tx,
-              sponsorId,
-              bonusAmt,
-              'level',
-              memberId,
+          // FIX: Same-day idempotency — skip if this level bonus was already credited today
+          const alreadyPaid = await prisma.bonus.findFirst({
+            where: {
+              user_id:      sponsorId,
+              from_user_id: memberId,
+              type:         'level',
               level,
-              `Level ${level} ROI matching bonus from ${memberUserId}`,
-            )
+              created_at:   { gte: dayStart, lte: dayEnd },
+            },
           })
+
+          if (alreadyPaid) {
+            console.log(`[Bonus] Level ${level} bonus to sponsor #${sponsorId} from member #${memberId} already paid today — skipping.`)
+          } else {
+            // Each bonus credit is its own small atomic transaction — avoids giant lock
+            await prisma.$transaction(async (tx) => {
+              await creditBonus(
+                tx,
+                sponsorId,
+                bonusAmt,
+                'level',
+                memberId,
+                level,
+                `Level ${level} ROI matching bonus from ${memberUserId}`,
+              )
+            })
+          }
         }
       }
     }
