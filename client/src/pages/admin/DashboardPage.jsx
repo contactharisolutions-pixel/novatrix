@@ -4,6 +4,7 @@ import {
   Users, CreditCard, ArrowUpFromLine, ShieldCheck,
   Ticket, TrendingUp, AlertCircle, Activity,
   Zap, Network, Trophy, Crown, DollarSign,
+  UserPlus, Briefcase, CalendarCheck,
 } from 'lucide-react'
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid, Cell } from 'recharts'
 import toast from 'react-hot-toast'
@@ -39,7 +40,7 @@ export default function AdminDashboard() {
     </div>
   )
 
-  const { members, pending_actions, financials } = data
+  const { members, pending_actions, financials, today = {}, total_business = 0 } = data
 
 
   const INCOME_TYPES = [
@@ -66,6 +67,84 @@ export default function AdminDashboard() {
           color="purple"
           sub="Total money deposited"
         />
+      </div>
+
+      {/* ── Today's Activity + Total Business KPIs ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gap-md)' }} id="admin-today-grid">
+        {/* Today's Joinings — count */}
+        <div style={{
+          background: 'var(--navy-card)', borderRadius: 'var(--radius-md)',
+          border: '1px solid rgba(34,211,238,0.2)', padding: '1.5rem',
+          display: 'flex', flexDirection: 'column', gap: '0.75rem',
+          position: 'relative', overflow: 'hidden',
+        }}>
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3,
+            background: 'linear-gradient(90deg, #22d3ee, #06b6d4)', borderRadius: '4px 4px 0 0' }} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <CalendarCheck size={14} style={{ color: '#22d3ee' }} />
+              <p style={{ fontSize: '0.7rem', color: 'var(--text-faint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Today's Joinings</p>
+            </div>
+            <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(34,211,238,0.12)',
+              border: '1px solid rgba(34,211,238,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <UserPlus size={15} style={{ color: '#22d3ee' }} />
+            </div>
+          </div>
+          <p style={{ fontSize: '2.25rem', fontWeight: 900, color: '#22d3ee', fontFamily: 'Outfit, sans-serif', lineHeight: 1 }}>
+            {(today.joinings ?? 0).toLocaleString()}
+          </p>
+          <p style={{ fontSize: '0.72rem', color: 'var(--text-faint)', fontWeight: 500 }}>New members registered today (IST)</p>
+        </div>
+
+        {/* Today's Investment — amount */}
+        <div style={{
+          background: 'var(--navy-card)', borderRadius: 'var(--radius-md)',
+          border: '1px solid rgba(249,115,22,0.2)', padding: '1.5rem',
+          display: 'flex', flexDirection: 'column', gap: '0.75rem',
+          position: 'relative', overflow: 'hidden',
+        }}>
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3,
+            background: 'linear-gradient(90deg, #f97316, #fb923c)', borderRadius: '4px 4px 0 0' }} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <CalendarCheck size={14} style={{ color: '#f97316' }} />
+              <p style={{ fontSize: '0.7rem', color: 'var(--text-faint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Today's Investment</p>
+            </div>
+            <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(249,115,22,0.12)',
+              border: '1px solid rgba(249,115,22,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <CreditCard size={15} style={{ color: '#f97316' }} />
+            </div>
+          </div>
+          <p style={{ fontSize: '2.25rem', fontWeight: 900, color: '#f97316', fontFamily: 'Outfit, sans-serif', lineHeight: 1 }}>
+            ${(+(today.investment ?? 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+          </p>
+          <p style={{ fontSize: '0.72rem', color: 'var(--text-faint)', fontWeight: 500 }}>Packages activated today (IST)</p>
+        </div>
+
+        {/* Total Business — all time */}
+        <div style={{
+          background: 'var(--navy-card)', borderRadius: 'var(--radius-md)',
+          border: '1px solid rgba(167,139,250,0.2)', padding: '1.5rem',
+          display: 'flex', flexDirection: 'column', gap: '0.75rem',
+          position: 'relative', overflow: 'hidden',
+        }}>
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3,
+            background: 'linear-gradient(90deg, #a78bfa, #8b5cf6)', borderRadius: '4px 4px 0 0' }} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <TrendingUp size={14} style={{ color: '#a78bfa' }} />
+              <p style={{ fontSize: '0.7rem', color: 'var(--text-faint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Total Business</p>
+            </div>
+            <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(167,139,250,0.12)',
+              border: '1px solid rgba(167,139,250,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Briefcase size={15} style={{ color: '#a78bfa' }} />
+            </div>
+          </div>
+          <p style={{ fontSize: '2.25rem', fontWeight: 900, color: '#a78bfa', fontFamily: 'Outfit, sans-serif', lineHeight: 1 }}>
+            ${(+total_business).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+          </p>
+          <p style={{ fontSize: '0.72rem', color: 'var(--text-faint)', fontWeight: 500 }}>All-time total trade package volume</p>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 'var(--gap-md)' }} id="admin-mid-grid">
@@ -226,17 +305,20 @@ export default function AdminDashboard() {
       <style>{`
         @media (max-width: 639px) {
           #admin-stat-grid    { grid-template-columns: 1fr !important; }
+          #admin-today-grid   { grid-template-columns: 1fr !important; }
           #admin-pending-grid { grid-template-columns: 1fr !important; }
           #admin-fin-grid     { grid-template-columns: 1fr !important; }
           #admin-income-grid  { grid-template-columns: repeat(2, 1fr) !important; }
         }
         @media (min-width: 640px) and (max-width: 1023px) {
+          #admin-today-grid   { grid-template-columns: repeat(2, 1fr) !important; }
           #admin-pending-grid { grid-template-columns: repeat(2, 1fr) !important; }
           #admin-fin-grid     { grid-template-columns: repeat(3, 1fr) !important; }
           #admin-income-grid  { grid-template-columns: repeat(3, 1fr) !important; }
         }
         @media (min-width: 1024px) {
           #admin-stat-grid    { grid-template-columns: repeat(4, 1fr) !important; }
+          #admin-today-grid   { grid-template-columns: repeat(3, 1fr) !important; }
           #admin-pending-grid { grid-template-columns: repeat(4, 1fr) !important; }
           #admin-income-grid  { grid-template-columns: repeat(5, 1fr) !important; }
         }
