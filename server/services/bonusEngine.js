@@ -193,29 +193,27 @@ async function triggerROIMatchingBonus(memberId, memberUserId, roiAmount) {
       select: {
         sponsor_id: true,
         status: true,
-        // FIX: package must have been STARTED on or before today (not just currently active)
-        // Prevents a sponsor from earning level bonuses on distributions that occurred
-        // before their own package was activated.
         packages: {
           where: { status: 'active', started_at: { lte: new Date() } },
           take: 1,
           select: { id: true, started_at: true }
-        },
-        _count: {
-          select: {
-            // FIX: downline must also have activated their package on or before today
-            referrals: {
-              where: { packages: { some: { status: 'active', started_at: { lte: new Date() } } } }
-            }
-          }
         }
       }
     });
 
     if (!sponsor) break;
 
-    const hasActivePkg        = sponsor.packages.length > 0;
-    const activeDownlineCount = sponsor._count.referrals;
+    const hasActivePkg = sponsor.packages.length > 0;
+    
+    // Optimized: direct count query instead of nested _count inside select
+    const activeDownlineCount = await prisma.user.count({
+      where: {
+        sponsor_id: sponsorId,
+        packages: {
+          some: { status: 'active', started_at: { lte: new Date() } }
+        }
+      }
+    });
 
     // Sponsor must be active AND have at least one active trade package
     if (sponsor.status === 'active' && hasActivePkg) {

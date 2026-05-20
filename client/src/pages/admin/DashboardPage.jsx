@@ -69,8 +69,8 @@ export default function AdminDashboard() {
         />
       </div>
 
-      {/* ── Today's Activity + Total Business KPIs ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gap-md)' }} id="admin-today-grid">
+      {/* ── Today & Yesterday Activity + Total Business KPIs ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 'var(--gap-md)' }} id="admin-today-grid">
         {/* Today's Joinings — count */}
         <div style={{
           background: 'var(--navy-card)', borderRadius: 'var(--radius-md)',
@@ -119,6 +119,56 @@ export default function AdminDashboard() {
             ${(+(today.investment ?? 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
           </p>
           <p style={{ fontSize: '0.72rem', color: 'var(--text-faint)', fontWeight: 500 }}>Packages activated today (IST)</p>
+        </div>
+
+        {/* Yesterday's Joinings — count */}
+        <div style={{
+          background: 'var(--navy-card)', borderRadius: 'var(--radius-md)',
+          border: '1px solid rgba(59,130,246,0.2)', padding: '1.5rem',
+          display: 'flex', flexDirection: 'column', gap: '0.75rem',
+          position: 'relative', overflow: 'hidden',
+        }}>
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3,
+            background: 'linear-gradient(90deg, #3b82f6, #60a5fa)', borderRadius: '4px 4px 0 0' }} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <CalendarCheck size={14} style={{ color: '#3b82f6' }} />
+              <p style={{ fontSize: '0.7rem', color: 'var(--text-faint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Yest. Joinings</p>
+            </div>
+            <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(59,130,246,0.12)',
+              border: '1px solid rgba(59,130,246,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <UserPlus size={15} style={{ color: '#3b82f6' }} />
+            </div>
+          </div>
+          <p style={{ fontSize: '2.25rem', fontWeight: 900, color: '#3b82f6', fontFamily: 'Outfit, sans-serif', lineHeight: 1 }}>
+            {(data.yesterday?.joinings ?? 0).toLocaleString()}
+          </p>
+          <p style={{ fontSize: '0.72rem', color: 'var(--text-faint)', fontWeight: 500 }}>New members registered yesterday</p>
+        </div>
+
+        {/* Yesterday's Investment — amount */}
+        <div style={{
+          background: 'var(--navy-card)', borderRadius: 'var(--radius-md)',
+          border: '1px solid rgba(236,72,153,0.2)', padding: '1.5rem',
+          display: 'flex', flexDirection: 'column', gap: '0.75rem',
+          position: 'relative', overflow: 'hidden',
+        }}>
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3,
+            background: 'linear-gradient(90deg, #ec4899, #f472b6)', borderRadius: '4px 4px 0 0' }} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <CalendarCheck size={14} style={{ color: '#ec4899' }} />
+              <p style={{ fontSize: '0.7rem', color: 'var(--text-faint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Yest. Investment</p>
+            </div>
+            <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(236,72,153,0.12)',
+              border: '1px solid rgba(236,72,153,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <CreditCard size={15} style={{ color: '#ec4899' }} />
+            </div>
+          </div>
+          <p style={{ fontSize: '2.25rem', fontWeight: 900, color: '#ec4899', fontFamily: 'Outfit, sans-serif', lineHeight: 1 }}>
+            ${(+(data.yesterday?.investment ?? 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+          </p>
+          <p style={{ fontSize: '0.72rem', color: 'var(--text-faint)', fontWeight: 500 }}>Packages activated yesterday</p>
         </div>
 
         {/* Total Business — all time */}
@@ -318,7 +368,7 @@ export default function AdminDashboard() {
         }
         @media (min-width: 1024px) {
           #admin-stat-grid    { grid-template-columns: repeat(4, 1fr) !important; }
-          #admin-today-grid   { grid-template-columns: repeat(3, 1fr) !important; }
+          #admin-today-grid   { grid-template-columns: repeat(5, 1fr) !important; }
           #admin-pending-grid { grid-template-columns: repeat(4, 1fr) !important; }
           #admin-income-grid  { grid-template-columns: repeat(5, 1fr) !important; }
         }

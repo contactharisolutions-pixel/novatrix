@@ -22,7 +22,7 @@ router.get('/dashboard', async (req, res, next) => {
 
     const [
       totalTopup, totalWithdraw, totalEarning, teamCount, activeTeamCount, todayJoiningCount, todayBusinessSum, todayActivationCount,
-      totalTeamBusinessSum, todayRoiSum, totalRoiSum, todaySponsorSum, totalSponsorSum, todayLevelSum, totalLevelSum
+      totalTeamBusinessSum, todayRoiSum, totalRoiSum, todaySponsorSum, totalSponsorSum, todayLevelSum, totalLevelSum, todayDeactivateJoiningCount
     ] = await Promise.all([
       // Total Topup = total activated trade packages (self + admin-activated)
       prisma.tradePackage.aggregate({ where: { user_id: req.user.id }, _sum: { amount: true } }),
@@ -137,6 +137,19 @@ router.get('/dashboard', async (req, res, next) => {
       prisma.$queryRaw`
         SELECT SUM(amount) as total FROM "Bonus"
         WHERE user_id = ${req.user.id} AND type = 'level'::"BonusType"
+      `,
+
+      // Today's Deactivate Joining (Recursive) — IST timezone
+      prisma.$queryRaw`
+        WITH RECURSIVE tree AS (
+          SELECT id FROM "User" WHERE sponsor_id = ${req.user.id}
+          UNION ALL
+          SELECT u.id FROM "User" u INNER JOIN tree t ON u.sponsor_id = t.id
+        )
+        SELECT COUNT(*) as count FROM "User" 
+        WHERE id IN (SELECT id FROM tree) 
+        AND status = 'inactive'
+        AND (created_at AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date
       `
     ])
 
@@ -160,6 +173,7 @@ router.get('/dashboard', async (req, res, next) => {
         total_sponsor_income: Number(totalSponsorSum[0]?.total || 0),
         today_level_income: Number(todayLevelSum[0]?.total || 0),
         total_level_income: Number(totalLevelSum[0]?.total || 0),
+        today_deactivate_joining: Number(todayDeactivateJoiningCount[0]?.count || 0),
       },
     })
   } catch (err) { next(err) }

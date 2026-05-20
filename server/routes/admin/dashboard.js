@@ -14,11 +14,17 @@ router.get('/dashboard', async (req, res, next) => {
     const todayStart = new Date(todayStr + 'T00:00:00+05:30')
     const todayEnd   = new Date(todayStr + 'T23:59:59+05:30')
 
+    // Yesterday IST range
+    const yesterdayIST = new Date(Date.now() + IST_OFFSET_MS - 24 * 60 * 60 * 1000)
+    const yesterdayStr = yesterdayIST.toISOString().split('T')[0]
+    const yesterdayStart = new Date(yesterdayStr + 'T00:00:00+05:30')
+    const yesterdayEnd   = new Date(yesterdayStr + 'T23:59:59+05:30')
+
     const [
       totalMembers, activeMembers, pendingDeposits, pendingWithdrawals,
       pendingKyc, openTickets, totalDepositVol, totalWithdrawVol,
       roiBonus, directBonus, levelBonus, rewardBonus, royaltyBonus,
-      todayJoinCount, todayInvestment, totalBusiness,
+      todayJoinCount, todayInvestment, yesterdayJoinCount, yesterdayInvestment, totalBusiness,
     ] = await Promise.all([
       prisma.user.count(),
       prisma.user.count({ where: { status: 'active' } }),
@@ -39,6 +45,13 @@ router.get('/dashboard', async (req, res, next) => {
       // Today's investment — trade packages activated today
       prisma.tradePackage.aggregate({
         where: { started_at: { gte: todayStart, lte: todayEnd } },
+        _sum: { amount: true },
+      }),
+      // Yesterday's joinings
+      prisma.user.count({ where: { created_at: { gte: yesterdayStart, lte: yesterdayEnd } } }),
+      // Yesterday's investment
+      prisma.tradePackage.aggregate({
+        where: { started_at: { gte: yesterdayStart, lte: yesterdayEnd } },
         _sum: { amount: true },
       }),
       // Total business — all-time trade package investment
@@ -71,6 +84,10 @@ router.get('/dashboard', async (req, res, next) => {
       today: {
         joinings:   todayJoinCount,
         investment: +(todayInvestment._sum.amount || 0),
+      },
+      yesterday: {
+        joinings:   yesterdayJoinCount,
+        investment: +(yesterdayInvestment._sum.amount || 0),
       },
       total_business: +(totalBusiness._sum.amount || 0),
     })
