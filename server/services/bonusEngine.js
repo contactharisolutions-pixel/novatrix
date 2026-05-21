@@ -167,7 +167,7 @@ async function triggerDirectAndLevelBonus(memberId, investment, activatedAt = ne
  * @param {string} memberUserId  - Display ID for ledger remarks
  * @param {number} roiAmount     - The ROI amount generated
  */
-async function triggerROIMatchingBonus(memberId, memberUserId, roiAmount) {
+async function triggerROIMatchingBonus(memberId, memberUserId, roiAmount, userMap = null) {
   const rates = await getCommissionRates()
   const LEVEL_RATES = rates.levels
 
@@ -178,9 +178,47 @@ async function triggerROIMatchingBonus(memberId, memberUserId, roiAmount) {
   const dayStart      = new Date(todayStr + 'T00:00:00+05:30')
   const dayEnd        = new Date(todayStr + 'T23:59:59+05:30')
 
+  // Dynamically build userMap if not provided
+  if (!userMap) {
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        sponsor_id: true,
+        status: true,
+        packages: {
+          where: { status: 'active', started_at: { lte: new Date() } },
+          take: 1,
+          select: { id: true }
+        },
+        referrals: {
+          select: {
+            id: true,
+            packages: {
+              where: { status: 'active', started_at: { lte: new Date() } },
+              take: 1,
+              select: { id: true }
+            }
+          }
+        }
+      }
+    })
+
+    userMap = new Map()
+    for (const u of users) {
+      const hasActivePkg = u.packages.length > 0
+      const activeDownlineCount = u.referrals.filter(ref => ref.packages.length > 0).length
+      userMap.set(u.id, {
+        sponsor_id: u.sponsor_id,
+        status: u.status,
+        hasActivePkg,
+        activeDownlineCount
+      })
+    }
+  }
+
   let level = 1
 
-  const member = await prisma.user.findUnique({
+  const member = userMap.get(memberId) || await prisma.user.findUnique({
     where: { id: memberId },
     select: { sponsor_id: true }
   });
@@ -188,32 +226,12 @@ async function triggerROIMatchingBonus(memberId, memberUserId, roiAmount) {
 
   // Walk up the sponsor chain up to 15 levels
   while (level <= 15 && sponsorId) {
-    const sponsor = await prisma.user.findUnique({
-      where: { id: sponsorId },
-      select: {
-        sponsor_id: true,
-        status: true,
-        packages: {
-          where: { status: 'active', started_at: { lte: new Date() } },
-          take: 1,
-          select: { id: true, started_at: true }
-        }
-      }
-    });
+    const sponsor = userMap.get(sponsorId)
 
     if (!sponsor) break;
 
-    const hasActivePkg = sponsor.packages.length > 0;
-    
-    // Optimized: direct count query instead of nested _count inside select
-    const activeDownlineCount = await prisma.user.count({
-      where: {
-        sponsor_id: sponsorId,
-        packages: {
-          some: { status: 'active', started_at: { lte: new Date() } }
-        }
-      }
-    });
+    const hasActivePkg = sponsor.hasActivePkg;
+    const activeDownlineCount = sponsor.activeDownlineCount;
 
     // Sponsor must be active AND have at least one active trade package
     if (sponsor.status === 'active' && hasActivePkg) {

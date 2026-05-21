@@ -40,31 +40,121 @@ async function creditIncome(tx, userId, amount, remarks, refId) {
 async function distributeROI() {
   console.log(`[ROI Cron] Starting distribution — ${new Date().toISOString()}`)
 
-  const activePackages = await prisma.tradePackage.findMany({
-    where: { status: 'active' },
-  })
-
-  let processed = 0, completed = 0
-
   // FIX #8: Get today's IST date string to prevent double-fire on same day
   const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
   const todayIST = new Date(Date.now() + IST_OFFSET_MS)
   const todayStr = todayIST.toISOString().split('T')[0] // e.g. '2026-05-04'
 
-  const bonusPromises = []
+  // Query 1: Fetch today's ROI distributions to prevent double-runs
+  const todayDists = await prisma.roiDistribution.findMany({
+    where: {
+      created_at: { gte: new Date(todayStr + 'T00:00:00+05:30') }
+    },
+    select: { package_id: true }
+  })
+  const alreadyRanPkgIds = new Set(todayDists.map(d => d.package_id))
+
+  // Query 2: Fetch all users and their metadata for in-memory traversal
+  const users = await prisma.user.findMany({
+    select: {
+      id: true,
+      user_id: true,
+      sponsor_id: true,
+      status: true,
+      packages: {
+        where: { status: 'active', started_at: { lte: new Date() } },
+        take: 1,
+        select: { id: true }
+      },
+      referrals: {
+        select: {
+          id: true,
+          packages: {
+            where: { status: 'active', started_at: { lte: new Date() } },
+            take: 1,
+            select: { id: true }
+          }
+        }
+      }
+    }
+  })
+
+  // Build the maps for sponsor walking and lookup
+  const userMap = new Map()
+  const childrenMap = new Map()
+  const userDisplayIdMap = new Map()
+  for (const u of users) {
+    const hasActivePkg = u.packages.length > 0
+    const activeDownlineCount = u.referrals.filter(ref => ref.packages.length > 0).length
+    userMap.set(u.id, {
+      sponsor_id: u.sponsor_id,
+      status: u.status,
+      hasActivePkg,
+      activeDownlineCount
+    })
+    userDisplayIdMap.set(u.id, u.user_id)
+    if (u.sponsor_id) {
+      if (!childrenMap.has(u.sponsor_id)) {
+        childrenMap.set(u.sponsor_id, [])
+      }
+      childrenMap.get(u.sponsor_id).push(u.id)
+    }
+  }
+
+  // Query 3: Fetch all active trade packages to process
+  const activePackages = await prisma.tradePackage.findMany({
+    where: { status: 'active' },
+  })
+
+  // Query 4: Fetch all trade packages in the database to calculate activation and volumes in memory
+  const allPackages = await prisma.tradePackage.findMany({
+    select: {
+      id: true,
+      user_id: true,
+      amount: true,
+      started_at: true
+    }
+  })
+
+  // Group all packages by user_id
+  const userPackagesMap = new Map()
+  for (const pkg of allPackages) {
+    if (!userPackagesMap.has(pkg.user_id)) {
+      userPackagesMap.set(pkg.user_id, [])
+    }
+    userPackagesMap.get(pkg.user_id).push(pkg)
+  }
+
+  // Sort packages for each user by started_at ASC to easily find earliest package
+  for (const [userId, pkgs] of userPackagesMap.entries()) {
+    pkgs.sort((a, b) => new Date(a.started_at) - new Date(b.started_at))
+  }
+
+  // Helper to traverse downline recursively in memory
+  function getDownlineIds(userId) {
+    const ids = []
+    const queue = [userId]
+    let current
+    while (queue.length > 0) {
+      current = queue.shift()
+      const children = childrenMap.get(current) || []
+      for (const childId of children) {
+        ids.push(childId)
+        queue.push(childId)
+      }
+    }
+    return ids
+  }
+
+  let processed = 0, completed = 0
 
   for (const pkg of activePackages) {
-    // FIX #8: Skip if ROI was already distributed today for this package
-    const alreadyRan = await prisma.roiDistribution.findFirst({
-      where: {
-        package_id: pkg.id,
-        created_at: { gte: new Date(todayStr + 'T00:00:00+05:30') }
-      }
-    })
-    if (alreadyRan) {
+    // Skip if ROI was already distributed today for this package
+    if (alreadyRanPkgIds.has(pkg.id)) {
       console.log(`[ROI Cron] Package #${pkg.id} already distributed today. Skipping.`)
       continue
     }
+
     const amount      = parseFloat(pkg.amount)
     const totalEarned = parseFloat(pkg.total_earned)
     const PLATFORM_LAUNCH = new Date('2026-05-04T00:00:00+05:30')
@@ -84,30 +174,30 @@ async function distributeROI() {
       dailyRoi = 0.5
     }
 
-    const [firstPkg] = await prisma.$queryRaw`
-      SELECT started_at FROM "TradePackage"
-      WHERE user_id = ${pkg.user_id}
-      ORDER BY started_at ASC LIMIT 1
-    `
+    // Get earliest package in memory
+    const userPkgs = userPackagesMap.get(pkg.user_id)
+    const firstPkg = userPkgs && userPkgs.length > 0 ? userPkgs[0] : null
     const memberActivationDate = firstPkg ? new Date(firstPkg.started_at) : pkgStart
     const limit15Days = new Date(memberActivationDate.getTime() + 15 * 24 * 60 * 60 * 1000)
 
-    const [memberInvestRes] = await prisma.$queryRaw`
-      SELECT COALESCE(SUM(amount), 0) as total FROM "TradePackage"
-      WHERE user_id = ${pkg.user_id} AND started_at <= ${limit15Days}
-    `
-    const memberInvest15Days = parseFloat(memberInvestRes?.total || 0)
+    // Calculate member total investment in 15 days in memory
+    const memberInvest15Days = userPkgs
+      ? userPkgs
+          .filter(p => new Date(p.started_at) <= limit15Days)
+          .reduce((sum, p) => sum + parseFloat(p.amount), 0)
+      : 0
 
-    const [teamInvestRes15Days] = await prisma.$queryRaw`
-      WITH RECURSIVE tree AS (
-        SELECT id FROM "User" WHERE sponsor_id = ${pkg.user_id}
-        UNION ALL
-        SELECT u.id FROM "User" u INNER JOIN tree t ON u.sponsor_id = t.id
-      )
-      SELECT COALESCE(SUM(amount), 0) as total FROM "TradePackage"
-      WHERE user_id IN (SELECT id FROM tree) AND started_at <= ${limit15Days}
-    `
-    const teamTotal15Days = parseFloat(teamInvestRes15Days?.total || 0)
+    // Calculate team total investment in 15 days in memory
+    const downlineIds = getDownlineIds(pkg.user_id)
+    let teamTotal15Days = 0
+    for (const downlineId of downlineIds) {
+      const dlPkgs = userPackagesMap.get(downlineId) || []
+      for (const p of dlPkgs) {
+        if (new Date(p.started_at) <= limit15Days) {
+          teamTotal15Days += parseFloat(p.amount)
+        }
+      }
+    }
 
     let maxMultiplier = 2
     if (memberInvest15Days > 0 && teamTotal15Days >= 3 * memberInvest15Days) {
@@ -160,13 +250,17 @@ async function distributeROI() {
         })
       })
 
-      const userObj = await prisma.user.findUnique({ where: { id: pkg.user_id }, select: { user_id: true } })
-      
-      // Push the matching bonus execution to a promises array to run concurrently later
-      bonusPromises.push(
-        triggerROIMatchingBonus(pkg.user_id, userObj?.user_id || 'Member', creditable)
-          .catch(err => console.error(`[ROI Cron] Matching bonus error for package #${pkg.id}:`, err.message))
-      )
+      // Run matching bonus sequentially to avoid connection pool congestion
+      try {
+        await triggerROIMatchingBonus(
+          pkg.user_id,
+          userDisplayIdMap.get(pkg.user_id) || 'Member',
+          creditable,
+          userMap
+        )
+      } catch (err) {
+        console.error(`[ROI Cron] Matching bonus error for package #${pkg.id}:`, err.message)
+      }
 
       processed++
       if (isDone) completed++
@@ -174,9 +268,6 @@ async function distributeROI() {
       console.error(`[ROI Cron] Error for package #${pkg.id}:`, err.message)
     }
   }
-
-  // Execute all level matching bonuses concurrently to avoid timing out on Vercel
-  await Promise.allSettled(bonusPromises)
 
   console.log(`[ROI Cron] Done. Processed: ${processed}, Completed: ${completed}`)
 }
