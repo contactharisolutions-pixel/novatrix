@@ -58,7 +58,7 @@ router.get('/dashboard', async (req, res, next) => {
         )
         SELECT COUNT(*) as count FROM "User" 
         WHERE id IN (SELECT id FROM tree) 
-        AND (created_at AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date
+        AND ((created_at AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date
       `,
 
       // Today's Business (Recursive Sum of Trade Packages) — IST timezone
@@ -70,7 +70,7 @@ router.get('/dashboard', async (req, res, next) => {
         )
         SELECT SUM(amount) as total FROM "TradePackage" 
         WHERE user_id IN (SELECT id FROM tree) 
-        AND (started_at AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date
+        AND ((started_at AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date
       `,
 
       // Today's Activations (Users who got their FIRST package today in downline) — IST timezone
@@ -82,10 +82,10 @@ router.get('/dashboard', async (req, res, next) => {
         )
         SELECT COUNT(DISTINCT user_id) as count FROM "TradePackage"
         WHERE user_id IN (SELECT id FROM tree)
-        AND (started_at AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date
+        AND ((started_at AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date
         AND user_id NOT IN (
           SELECT user_id FROM "TradePackage" 
-          WHERE (started_at AT TIME ZONE 'Asia/Kolkata')::date < (NOW() AT TIME ZONE 'Asia/Kolkata')::date
+          WHERE ((started_at AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Kolkata')::date < (NOW() AT TIME ZONE 'Asia/Kolkata')::date
         )
       `,
 
@@ -104,7 +104,7 @@ router.get('/dashboard', async (req, res, next) => {
       prisma.$queryRaw`
         SELECT SUM(amount) as total FROM "Bonus"
         WHERE user_id = ${req.user.id} AND type = 'trading'::"BonusType"
-        AND (created_at AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date
+        AND ((created_at AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date
       `,
 
       // Total ROI
@@ -117,7 +117,7 @@ router.get('/dashboard', async (req, res, next) => {
       prisma.$queryRaw`
         SELECT SUM(amount) as total FROM "Bonus"
         WHERE user_id = ${req.user.id} AND type = 'direct'::"BonusType"
-        AND (created_at AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date
+        AND ((created_at AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date
       `,
 
       // Total Sponsor Income
@@ -130,7 +130,7 @@ router.get('/dashboard', async (req, res, next) => {
       prisma.$queryRaw`
         SELECT SUM(amount) as total FROM "Bonus"
         WHERE user_id = ${req.user.id} AND type = 'level'::"BonusType"
-        AND (created_at AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date
+        AND ((created_at AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date
       `,
 
       // Total Level Income
@@ -149,7 +149,7 @@ router.get('/dashboard', async (req, res, next) => {
         SELECT COUNT(*) as count FROM "User" 
         WHERE id IN (SELECT id FROM tree) 
         AND status = 'inactive'
-        AND (created_at AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date
+        AND ((created_at AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date
       `
     ])
 

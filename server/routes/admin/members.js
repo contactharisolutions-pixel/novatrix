@@ -219,11 +219,14 @@ router.post('/:id/activate-package', async (req, res, next) => {
       }
     })
 
-    // Trigger bonuses for target's sponsor chain
+    // Trigger bonuses BEFORE sending response — ensures bonus runs even in serverless environments
+    // where async work after res.json() may be killed immediately.
     if (target.sponsor_id) {
-      triggerDirectAndLevelBonus(target.id, amt, new Date()).catch(console.error)
+      await triggerDirectAndLevelBonus(target.id, amt, new Date()).catch(err => {
+        console.error('[ActivatePackage] Bonus trigger failed:', err.message)
+      })
     }
-    // Instant rank/royalty re-evaluation
+    // Instant rank/royalty re-evaluation (non-blocking is OK — these are not financial)
     processRewards().catch(console.error)
     updateRoyaltyRanks().catch(console.error)
 

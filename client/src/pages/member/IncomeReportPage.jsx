@@ -61,6 +61,13 @@ export default function IncomeReportPage({ type, title, subtitle, icon: Icon }) 
               <tr>
                 <th style={{ width: 60 }}>SR.NO.</th>
                 <th>DATE & TIME</th>
+                {(type === 'direct' || type === 'level') && (
+                  <>
+                    <th>MEMBER ID</th>
+                    <th>MEMBER NAME</th>
+                    <th style={{ textAlign: 'right' }}>PACKAGE AMOUNT</th>
+                  </>
+                )}
                 <th style={{ textAlign: 'right' }}>AMOUNT</th>
                 <th>REMARKS</th>
               </tr>
@@ -82,6 +89,25 @@ export default function IncomeReportPage({ type, title, subtitle, icon: Icon }) 
                       </div>
                     </div>
                   </td>
+                  {(type === 'direct' || type === 'level') && (
+                    <>
+                      <td>
+                        <p style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                          {item.from_user ? item.from_user.user_id : '-'}
+                        </p>
+                      </td>
+                      <td>
+                        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                          {item.from_user ? item.from_user.name : '-'}
+                        </p>
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <p style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                          {item.package_amount ? fmt(item.package_amount) : '-'}
+                        </p>
+                      </td>
+                    </>
+                  )}
                   <td style={{ textAlign: 'right' }}>
                     <p style={{ fontSize: '0.9375rem', fontWeight: 900, color: 'var(--green)' }}>+{fmt(item.amount)}</p>
                   </td>
@@ -91,7 +117,7 @@ export default function IncomeReportPage({ type, title, subtitle, icon: Icon }) 
                 </tr>
               )) : (
                 <tr>
-                  <td colSpan={4} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-faint)' }}>
+                  <td colSpan={(type === 'direct' || type === 'level') ? 7 : 4} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-faint)' }}>
                     No records found in this category.
                   </td>
                 </tr>

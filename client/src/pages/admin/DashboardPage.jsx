@@ -40,7 +40,7 @@ export default function AdminDashboard() {
     </div>
   )
 
-  const { members, pending_actions, financials, today = {}, total_business = 0 } = data
+  const { members, pending_actions, financials, today = {}, yesterday = {}, total_business = 0 } = data
 
 
   const INCOME_TYPES = [
@@ -141,7 +141,7 @@ export default function AdminDashboard() {
             </div>
           </div>
           <p style={{ fontSize: '2.25rem', fontWeight: 900, color: '#3b82f6', fontFamily: 'Outfit, sans-serif', lineHeight: 1 }}>
-            {(data.yesterday?.joinings ?? 0).toLocaleString()}
+            {(yesterday.joinings ?? 0).toLocaleString()}
           </p>
           <p style={{ fontSize: '0.72rem', color: 'var(--text-faint)', fontWeight: 500 }}>New members registered yesterday</p>
         </div>
@@ -166,7 +166,7 @@ export default function AdminDashboard() {
             </div>
           </div>
           <p style={{ fontSize: '2.25rem', fontWeight: 900, color: '#ec4899', fontFamily: 'Outfit, sans-serif', lineHeight: 1 }}>
-            ${(+(data.yesterday?.investment ?? 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+            ${(+(yesterday.investment ?? 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
           </p>
           <p style={{ fontSize: '0.72rem', color: 'var(--text-faint)', fontWeight: 500 }}>Packages activated yesterday</p>
         </div>

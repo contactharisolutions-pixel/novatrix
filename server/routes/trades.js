@@ -132,11 +132,14 @@ router.post('/activate-for-other', async (req, res, next) => {
       })
     })
 
-    // Trigger bonuses + instant rank/royalty checks for target's sponsor chain
+    // Trigger bonuses BEFORE sending response — ensures bonus runs even in serverless environments
+    // where async work after res.json() may be killed immediately.
     if (target.sponsor_id) {
-      triggerDirectAndLevelBonus(target.id, amt, new Date()).catch(console.error)
+      await triggerDirectAndLevelBonus(target.id, amt, new Date()).catch(err => {
+        console.error('[ActivateForOther] Bonus trigger failed:', err.message)
+      })
     }
-    // Performance rank and royalty rank re-evaluated immediately after activation
+    // Performance rank and royalty rank re-evaluated immediately after activation (non-financial, non-blocking OK)
     processRewards().catch(console.error)
     updateRoyaltyRanks().catch(console.error)
 
@@ -224,12 +227,14 @@ router.post('/invest', async (req, res, next) => {
       return p
     })
 
-    // Trigger direct + level bonuses for sponsor chain
-    // Pass pkg.started_at so eligibility is checked against the exact activation time
+    // Trigger bonuses BEFORE sending response — ensures bonus runs even in serverless environments
+    // where async work after res.json() may be killed immediately.
     if (user.sponsor_id) {
-      triggerDirectAndLevelBonus(req.user.id, parseFloat(amount), pkg.started_at).catch(console.error)
+      await triggerDirectAndLevelBonus(req.user.id, parseFloat(amount), pkg.started_at).catch(err => {
+        console.error('[Invest] Bonus trigger failed:', err.message)
+      })
     }
-    // Performance rank and royalty rank re-evaluated immediately after activation
+    // Performance rank and royalty rank re-evaluated immediately after activation (non-financial, non-blocking OK)
     processRewards().catch(console.error)
     updateRoyaltyRanks().catch(console.error)
 

@@ -33,7 +33,7 @@ router.get('/dashboard', async (req, res, next) => {
       prisma.kycDocument.count({ where: { status: 'pending' } }),
       prisma.supportTicket.count({ where: { status: { in: ['open', 'in_progress'] } } }),
       prisma.deposit.aggregate({ where:    { status: 'approved' }, _sum: { amount: true } }),
-      prisma.withdrawal.aggregate({ where: { status: 'approved' }, _sum: { net_amount: true } }),
+      prisma.withdrawal.aggregate({ where: { status: 'approved' }, _sum: { amount: true } }),
       // Per-type bonus aggregates
       prisma.bonus.aggregate({ where: { type: 'trading' }, _sum: { amount: true } }),
       prisma.bonus.aggregate({ where: { type: 'direct'  }, _sum: { amount: true } }),
@@ -71,8 +71,8 @@ router.get('/dashboard', async (req, res, next) => {
       members:         { total: totalMembers, active: activeMembers, new_this_week: newMembersWeek },
       pending_actions: { deposits: pendingDeposits, withdrawals: pendingWithdrawals, kyc: pendingKyc, tickets: openTickets },
       financials: {
-        total_deposits:    +(totalDepositVol._sum.amount      || 0),
-        total_withdrawals: +(totalWithdrawVol._sum.net_amount || 0),
+        total_deposits:    +(totalDepositVol._sum.amount || 0),
+        total_withdrawals: +(totalWithdrawVol._sum.amount || 0),
         total_bonuses:     roi + direct + level + reward + royalty,
         // Breakdown by income type
         roi_paid:     roi,
