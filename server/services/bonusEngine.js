@@ -167,44 +167,53 @@ async function triggerDirectAndLevelBonus(memberId, investment, activatedAt = ne
  * @param {string} memberUserId  - Display ID for ledger remarks
  * @param {number} roiAmount     - The ROI amount generated
  */
-async function triggerROIMatchingBonus(memberId, memberUserId, roiAmount, userMap = null) {
+async function triggerROIMatchingBonus(memberId, memberUserId, roiAmount, userMap = null, distributionDate = new Date()) {
   const rates = await getCommissionRates()
   const LEVEL_RATES = rates.levels
 
   // Compute today's IST date range for idempotency check
   const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
-  const nowIST        = new Date(Date.now() + IST_OFFSET_MS)
+  const nowIST        = new Date(distributionDate.getTime() + IST_OFFSET_MS)
   const todayStr      = nowIST.toISOString().split('T')[0]  // e.g. '2026-05-19'
   const dayStart      = new Date(todayStr + 'T00:00:00+05:30')
   const dayEnd        = new Date(todayStr + 'T23:59:59+05:30')
 
   // Dynamically build userMap if not provided
   if (!userMap) {
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        sponsor_id: true,
-        status: true,
-        packages: {
-          where: { status: 'active', started_at: { lte: new Date() } },
-          take: 1,
-          select: { id: true }
-        },
-        referrals: {
-          select: {
-            id: true,
-            packages: {
-              where: { status: 'active', started_at: { lte: new Date() } },
-              take: 1,
-              select: { id: true }
+    userMap = new Map()
+    const member = await prisma.user.findUnique({
+      where: { id: memberId },
+      select: { sponsor_id: true }
+    })
+    
+    let currentSponsorId = member?.sponsor_id
+    let depth = 1
+    while (depth <= 15 && currentSponsorId) {
+      const u = await prisma.user.findUnique({
+        where: { id: currentSponsorId },
+        select: {
+          id: true,
+          sponsor_id: true,
+          status: true,
+          packages: {
+            where: { status: 'active', started_at: { lte: distributionDate } },
+            take: 1,
+            select: { id: true }
+          },
+          referrals: {
+            select: {
+              id: true,
+              packages: {
+                where: { status: 'active', started_at: { lte: distributionDate } },
+                take: 1,
+                select: { id: true }
+              }
             }
           }
         }
-      }
-    })
+      })
+      if (!u) break
 
-    userMap = new Map()
-    for (const u of users) {
       const hasActivePkg = u.packages.length > 0
       const activeDownlineCount = u.referrals.filter(ref => ref.packages.length > 0).length
       userMap.set(u.id, {
@@ -213,6 +222,9 @@ async function triggerROIMatchingBonus(memberId, memberUserId, roiAmount, userMa
         hasActivePkg,
         activeDownlineCount
       })
+
+      currentSponsorId = u.sponsor_id
+      depth++
     }
   }
 

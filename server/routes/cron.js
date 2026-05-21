@@ -158,6 +158,102 @@ router.all('/run-level-bonus', verifyCronSecret, async (req, res) => {
   }
 })
 
+// ─── POST /api/cron/queue-roi ──────────────────────────────────
+// Called daily to enqueue individual package ROI payouts in QStash
+router.post('/queue-roi', verifyCronSecret, async (req, res) => {
+  const startTime = Date.now()
+  try {
+    const qstashToken = process.env.QSTASH_TOKEN
+    const appUrl      = process.env.APP_URL
+    const cronSecret  = process.env.CRON_SECRET
+    const qstashUrl   = process.env.QSTASH_URL || 'https://qstash.upstash.io'
+
+    if (!qstashToken) {
+      return res.status(500).json({ success: false, error: 'QSTASH_TOKEN not configured' })
+    }
+    if (!appUrl) {
+      return res.status(500).json({ success: false, error: 'APP_URL not configured' })
+    }
+
+    const now  = new Date()
+    const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
+    const istNow  = new Date(now.getTime() + IST_OFFSET_MS)
+    const day  = istNow.getUTCDay() // 0=Sun, 6=Sat
+
+    // Daily ROI runs Monday to Friday only (day 1-5 in IST)
+    if (day < 1 || day > 5) {
+      console.log(`[QueueRoi] Skipping weekend queue (day ${day})`)
+      return res.json({ success: true, message: 'Skipped (weekend)', queued: 0 })
+    }
+
+    // Fetch active packages
+    const prisma = require('../lib/prisma')
+    const activePackages = await prisma.tradePackage.findMany({
+      where: { status: 'active' },
+      select: { id: true }
+    })
+
+    const total = activePackages.length
+    console.log(`[QueueRoi] Enqueueing ${total} active package(s) via QStash...`)
+
+    // Publish to QStash for each package
+    const promises = activePackages.map(pkg => {
+      const targetUrl = `${appUrl}/api/cron/process-package`
+      return fetch(`${qstashUrl}/v2/publish/${targetUrl}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${qstashToken}`,
+          'Content-Type': 'application/json',
+          'Upstash-Forward-Authorization': `Bearer ${cronSecret}`
+        },
+        body: JSON.stringify({ packageId: pkg.id })
+      }).then(async r => {
+        if (!r.ok) {
+          const text = await r.text()
+          throw new Error(`QStash error for package #${pkg.id}: ${text}`)
+        }
+        return r.json()
+      })
+    })
+
+    const results = await Promise.allSettled(promises)
+    const fulfilled = results.filter(r => r.status === 'fulfilled').length
+    const rejected = results.filter(r => r.status === 'rejected').length
+
+    const duration = ((Date.now() - startTime) / 1000).toFixed(2)
+    console.log(`[QueueRoi] Finished enqueuing. Success: ${fulfilled}, Failed: ${rejected}, Time: ${duration}s`)
+
+    res.json({
+      success: true,
+      duration: `${duration}s`,
+      total,
+      success_count: fulfilled,
+      failed_count: rejected,
+    })
+  } catch (err) {
+    console.error('[QueueRoi] Fatal error:', err.message)
+    res.status(500).json({ success: false, error: err.message })
+  }
+})
+
+// ─── POST /api/cron/process-package ────────────────────────────
+// Processes ROI for a single package
+router.post('/process-package', verifyCronSecret, async (req, res) => {
+  const { packageId } = req.body
+  if (!packageId) {
+    return res.status(400).json({ success: false, error: 'Missing packageId' })
+  }
+
+  try {
+    const { distributeROIForPackage } = require('../services/roiCron')
+    const result = await distributeROIForPackage(Number(packageId))
+    res.json(result)
+  } catch (err) {
+    console.error(`[ProcessPackage] Error processing package #${packageId}:`, err.message)
+    res.status(500).json({ success: false, error: err.message })
+  }
+})
+
 // ─── GET /api/cron/health ──────────────────────────────────────
 // Simple health probe — no secret required — for uptime monitors
 router.get('/health', (_req, res) => {

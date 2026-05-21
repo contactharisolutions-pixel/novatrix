@@ -278,6 +278,171 @@ function pickTradingPair() {
   return pairs[Math.floor(Math.random() * pairs.length)]
 }
 
+/** Process daily ROI distribution for a single package */
+async function distributeROIForPackage(packageId) {
+  console.log(`[ROI Single] Processing package #${packageId} — ${new Date().toISOString()}`)
+
+  // 1. Fetch the target package
+  const pkg = await prisma.tradePackage.findUnique({
+    where: { id: packageId, status: 'active' },
+  })
+  if (!pkg) {
+    console.log(`[ROI Single] Package #${packageId} not found or not active. Skipping.`)
+    return { success: false, reason: 'Package not found or inactive' }
+  }
+
+  // 2. Fetch today's IST date string to prevent double-fire
+  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
+  const todayIST = new Date(Date.now() + IST_OFFSET_MS)
+  const todayStr = todayIST.toISOString().split('T')[0]
+  const dayStart = new Date(todayStr + 'T00:00:00+05:30')
+  const dayEnd   = new Date(todayStr + 'T23:59:59+05:30')
+
+  // Check if ROI was already distributed today for this package
+  const todayDist = await prisma.roiDistribution.findFirst({
+    where: {
+      package_id: pkg.id,
+      created_at: { gte: dayStart, lte: dayEnd }
+    },
+    select: { id: true }
+  })
+  if (todayDist) {
+    console.log(`[ROI Single] Package #${pkg.id} already distributed today. Skipping.`)
+    return { success: false, reason: 'Already distributed today' }
+  }
+
+  // 3. Query earliest package activation and total investments in 15 days
+  const userPkgs = await prisma.tradePackage.findMany({
+    where: { user_id: pkg.user_id },
+    orderBy: { started_at: 'asc' },
+    select: { amount: true, started_at: true }
+  })
+  const firstPkg = userPkgs.length > 0 ? userPkgs[0] : null
+  const memberActivationDate = firstPkg ? new Date(firstPkg.started_at) : new Date(pkg.started_at)
+  const limit15Days = new Date(memberActivationDate.getTime() + 15 * 24 * 60 * 60 * 1000)
+
+  const memberInvest15Days = userPkgs
+    .filter(p => new Date(p.started_at) <= limit15Days)
+    .reduce((sum, p) => sum + parseFloat(p.amount), 0)
+
+  // Query 4: Fetch downline IDs recursively using raw SQL CTE
+  const downlineIdsResult = await prisma.$queryRaw`
+    WITH RECURSIVE downline AS (
+      SELECT id FROM "User" WHERE sponsor_id = ${pkg.user_id}
+      UNION ALL
+      SELECT u.id FROM "User" u
+      JOIN downline d ON u.sponsor_id = d.id
+    )
+    SELECT id FROM downline;
+  `
+  const downlineIds = downlineIdsResult.map(r => r.id)
+
+  // Query 5: Calculate team total investment in 15 days
+  let teamTotal15Days = 0
+  if (downlineIds.length > 0) {
+    const downlinePackages = await prisma.tradePackage.findMany({
+      where: {
+        user_id: { in: downlineIds },
+        started_at: { lte: limit15Days }
+      },
+      select: { amount: true }
+    })
+    teamTotal15Days = downlinePackages.reduce((sum, p) => sum + parseFloat(p.amount), 0)
+  }
+
+  // 4. ROI Rate & limits logic
+  const amount      = parseFloat(pkg.amount)
+  const totalEarned = parseFloat(pkg.total_earned)
+  const PLATFORM_LAUNCH = new Date('2026-05-04T00:00:00+05:30')
+  const pkgStart        = new Date(pkg.started_at)
+  const effectiveStart  = pkgStart < PLATFORM_LAUNCH ? PLATFORM_LAUNCH : pkgStart
+
+  const diffTime = effectiveStart.getTime() - PLATFORM_LAUNCH.getTime()
+  const diffDays = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)))
+
+  let dailyRoi = 0.5
+  if (diffDays <= 30) {
+    dailyRoi = 2.0
+  } else if (diffDays <= 120) {
+    dailyRoi = 1.0
+  } else {
+    dailyRoi = 0.5
+  }
+
+  let maxMultiplier = 2
+  if (memberInvest15Days > 0 && teamTotal15Days >= 3 * memberInvest15Days) {
+    maxMultiplier = 3
+  }
+
+  const maxReturn = amount * maxMultiplier
+  const roiEarned = parseFloat((amount * dailyRoi / 100).toFixed(2))
+
+  const creditable = Math.min(roiEarned, maxReturn - totalEarned)
+  if (creditable <= 0) {
+    if (totalEarned >= maxReturn) {
+      await prisma.tradePackage.update({
+        where: { id: pkg.id },
+        data: { status: 'completed', completed_at: new Date(), max_return: maxReturn, daily_roi_percent: dailyRoi },
+      })
+    }
+    return { success: true, completed: true, roi: 0 }
+  }
+
+  const newTotal  = totalEarned + creditable
+  const isDone    = newTotal >= maxReturn
+
+  // Fetch target user display ID for remarks
+  const user = await prisma.user.findUnique({
+    where: { id: pkg.user_id },
+    select: { user_id: true }
+  })
+  const userDisplayId = user?.user_id || 'Member'
+
+  // 5. Transaction execution
+  await prisma.$transaction(async (tx) => {
+    await tx.tradePackage.update({
+      where: { id: pkg.id },
+      data: {
+        total_earned:      newTotal,
+        max_return:        maxReturn,
+        daily_roi_percent: dailyRoi,
+        status:            isDone ? 'completed' : 'active',
+        completed_at:      isDone ? new Date() : null,
+      },
+    })
+    await creditIncome(
+      tx,
+      pkg.user_id,
+      creditable,
+      `Daily ROI ${dailyRoi}% on package #${pkg.id}`,
+      pkg.id
+    )
+    await tx.roiDistribution.create({
+      data: {
+        package_id: pkg.id,
+        user_id:    pkg.user_id,
+        amount:     creditable,
+        pair_name:  pickTradingPair(),
+      },
+    })
+  })
+
+  // 6. Trigger matching bonus sequentially (running outside transaction)
+  try {
+    await triggerROIMatchingBonus(
+      pkg.user_id,
+      userDisplayId,
+      creditable,
+      null // pass null to dynamically crawl sponsor chain up to 15 levels
+    )
+  } catch (err) {
+    console.error(`[ROI Single] Matching bonus error for package #${pkg.id}:`, err.message)
+  }
+
+  console.log(`[ROI Single] Finished package #${pkg.id}. Credited: $${creditable}. Completed: ${isDone}`)
+  return { success: true, completed: isDone, roi: creditable }
+}
+
 const { processRewards, matureRewards } = require('./rewardEngine')
 const { updateRoyaltyRanks, distributeMonthlyRoyalty } = require('./royaltyEngine')
 
@@ -312,4 +477,4 @@ function startROICron() {
   console.log('[ROI/Reward/Royalty Cron] Scheduled — runs daily at 12:00 AM IST')
 }
 
-module.exports = { startROICron, distributeROI }
+module.exports = { startROICron, distributeROI, distributeROIForPackage }

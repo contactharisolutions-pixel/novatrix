@@ -94,6 +94,12 @@ async function auditROI(data) {
     const distArr = distIdx.get(`${d.package_id}|${toIST(d.created_at)}`) || []
     if (distArr.length === 1 && tradArr.length === 0) {
       report('⚠️ ', `MISSING trading bonus: Dist #${d.id} user ${d.user_id} ${toIST(d.created_at)} $${d.amount}`)
+      if (!DRY_RUN) {
+        try {
+          await prisma.roiDistribution.delete({ where: { id: d.id } })
+          fixes++
+        } catch (e) { errors++; console.error('    err:', e.message) }
+      }
     }
   }
 
@@ -133,6 +139,15 @@ async function auditDirect(data) {
     directIdx.get(b.from_user_id).push(b)
   }
 
+  // Build earliest package activation date map for all users
+  const earliestPkgMap = new Map()
+  for (const pk of packages) {
+    const existing = earliestPkgMap.get(pk.user_id)
+    if (!existing || new Date(pk.started_at) < new Date(existing)) {
+      earliestPkgMap.set(pk.user_id, pk.started_at)
+    }
+  }
+
   let missing = 0, wrong = 0, dup = 0
   for (const pkg of packages) {
     const member  = uById.get(pkg.user_id)
@@ -143,20 +158,35 @@ async function auditDirect(data) {
     const expected = round2(parseFloat(pkg.amount) * DIRECT_RATE / 100)
     const existing = (directIdx.get(pkg.user_id) || [])
 
-    if (existing.length === 0) {
-      // Only flag if sponsor was active at the time
-      if (sponsor.status === 'active') {
-        missing++
-        report('⚠️ ', `MISSING direct bonus: pkg #${pkg.id} member ${member.user_id} → sponsor ${sponsor.user_id} expected $${expected}`)
-        if (!DRY_RUN) {
-          try {
-            await prisma.$transaction(async tx => {
-              await creditBonus(tx, sponsor.id, expected, 'direct', member.id, 1,
-                `[Backfill] Direct referral bonus from ${member.user_id}`, new Date(pkg.started_at))
-            })
-            fixes++
-          } catch (e) { errors++; console.error('    err:', e.message) }
+    // Sponsor earliest package start date must be <= member package start date
+    const sponsorPkgDate = earliestPkgMap.get(sponsor.id)
+    const eligible = sponsor.status === 'active' && sponsorPkgDate && new Date(sponsorPkgDate) <= new Date(pkg.started_at)
+
+    if (!eligible) {
+      if (existing.length > 0) {
+        dup += existing.length
+        for (const ex of existing) {
+          report('❌', `INELIGIBLE direct bonus: Member ${member.user_id} → Sponsor ${sponsor.user_id} $${parseFloat(ex.amount)} (Sponsor activated AFTER member) → REVERSE`)
+          if (!DRY_RUN) {
+            try {
+              await reverseBonus(prisma, sponsor.id, ex.id, parseFloat(ex.amount), `Ineligible direct from ${member.user_id} (Sponsor activated AFTER member)`)
+              fixes++
+            } catch (e) { errors++; console.error('    err:', e.message) }
+          }
         }
+      }
+      continue
+    }
+
+    if (existing.length === 0) {
+      missing++
+      report('⚠️ ', `MISSING direct bonus: pkg #${pkg.id} member ${member.user_id} → sponsor ${sponsor.user_id} expected $${expected}`)
+      if (!DRY_RUN) {
+        try {
+          await creditBonus(prisma, sponsor.id, expected, 'direct', member.id, 1,
+            `[Backfill] Direct referral bonus from ${member.user_id}`, new Date(pkg.started_at))
+          fixes++
+        } catch (e) { errors++; console.error('    err:', e.message) }
       }
     } else if (existing.length > 1) {
       dup += existing.length - 1
@@ -164,9 +194,7 @@ async function auditDirect(data) {
       if (!DRY_RUN) {
         for (const dup of existing.slice(1)) {
           try {
-            await prisma.$transaction(async tx => {
-              await reverseBonus(tx, sponsor.id, dup.id, parseFloat(dup.amount), `Dup direct from ${member.user_id}`)
-            })
+            await reverseBonus(prisma, sponsor.id, dup.id, parseFloat(dup.amount), `Dup direct from ${member.user_id}`)
             fixes++
           } catch (e) { errors++; console.error('    err:', e.message) }
         }
@@ -181,7 +209,7 @@ async function auditDirect(data) {
   }
 
   if (missing === 0 && wrong === 0 && dup === 0) console.log('  ✅ All direct sponsor bonuses correct')
-  else console.log(`  Missing: ${missing} | Wrong: ${wrong} | Duplicates: ${dup}`)
+  else console.log(`  Missing: ${missing} | Wrong: ${wrong} | Ineligible/Duplicates: ${dup}`)
 }
 
 // ── SECTION 3: Level Income ────────────────────────────────────
@@ -190,7 +218,7 @@ async function auditLevel(data) {
   console.log(' SECTION 3: LEVEL INCOME (15-level ROI Matching)')
   console.log('══════════════════════════════════════════════════════')
 
-  const { users, distributions, levelBonuses, activePkgSet, downlineCount } = data
+  const { users, distributions, levelBonuses, pkgsByUserId, sponsorReferralsMap } = data
   const uById = new Map(users.map(u => [u.id, u]))
 
   // Build bonus index: sponsorId|memberId|level|date → [bonus]
@@ -219,7 +247,25 @@ async function auditLevel(data) {
 
       const rate        = LEVEL_RATES[level] || 0
       const expected    = round2(roiAmt * rate / 100)
-      const eligible    = sponsor.status === 'active' && activePkgSet.has(sponsorId) && (downlineCount.get(sponsorId) || 0) >= level
+
+      // Sponsor must have had an active package on the distribution date
+      const sponsorPkgs = pkgsByUserId.get(sponsorId) || []
+      const hasActivePkgAtDist = sponsorPkgs.some(p => 
+        new Date(p.started_at) <= new Date(dist.created_at) &&
+        (p.completed_at === null || new Date(p.completed_at) > new Date(dist.created_at))
+      )
+      
+      // Calculate how many direct referrals of the sponsor had active packages on the distribution date
+      const referrals = sponsorReferralsMap.get(sponsorId) || []
+      const activeReferralsOnDate = referrals.filter(refId => {
+        const refPkgs = pkgsByUserId.get(refId) || []
+        return refPkgs.some(p => 
+          new Date(p.started_at) <= new Date(dist.created_at) &&
+          (p.completed_at === null || new Date(p.completed_at) > new Date(dist.created_at))
+        )
+      }).length
+
+      const eligible    = sponsor.status === 'active' && hasActivePkgAtDist && activeReferralsOnDate >= level
       const k           = `${sponsorId}|${dist.user_id}|${level}|${distDate}`
       const existing    = lvlIdx.get(k) || []
 
@@ -230,7 +276,7 @@ async function auditLevel(data) {
             report('❌', `INELIGIBLE level bonus: Dist #${dist.id} Lvl ${level} Sponsor ${sponsor.user_id} $${parseFloat(ex.amount)} → REVERSE`)
             if (!DRY_RUN) {
               try {
-                await prisma.$transaction(async tx => reverseBonus(tx, sponsorId, ex.id, parseFloat(ex.amount), `Ineligible Lvl ${level} from ${dist.user_id} dist #${dist.id}`))
+                await reverseBonus(prisma, sponsorId, ex.id, parseFloat(ex.amount), `Ineligible Lvl ${level} from ${dist.user_id} dist #${dist.id}`)
                 fixes++
               } catch (e) { errors++; console.error('    err:', e.message) }
             }
@@ -246,10 +292,8 @@ async function auditLevel(data) {
         report('⚠️ ', `MISSING Lvl ${level}: Dist #${dist.id} ${distDate} member ${dist.user_id} → ${sponsor.user_id} $${expected}`)
         if (!DRY_RUN) {
           try {
-            await prisma.$transaction(async tx => {
-              await creditBonus(tx, sponsorId, expected, 'level', dist.user_id, level,
-                `[Backfill] Level ${level} ROI matching from dist #${dist.id} (${distDate})`, toUTC(distDate, '12:00:00'))
-            })
+            await creditBonus(prisma, sponsorId, expected, 'level', dist.user_id, level,
+              `[Backfill] Level ${level} ROI matching from dist #${dist.id} (${distDate})`, toUTC(distDate, '12:00:00'))
             fixes++
           } catch (e) { errors++; console.error('    err:', e.message) }
         }
@@ -259,7 +303,7 @@ async function auditLevel(data) {
           report('❌', `DUPLICATE Lvl ${level}: Dist #${dist.id} Sponsor ${sponsor.user_id}`)
           if (!DRY_RUN) {
             try {
-              await prisma.$transaction(async tx => reverseBonus(tx, sponsorId, ex.id, parseFloat(ex.amount), `Dup Lvl ${level} dist #${dist.id}`))
+              await reverseBonus(prisma, sponsorId, ex.id, parseFloat(ex.amount), `Dup Lvl ${level} dist #${dist.id}`)
               fixes++
             } catch (e) { errors++; console.error('    err:', e.message) }
           }
@@ -404,11 +448,26 @@ async function main() {
   console.log('⏳ Bulk loading data (5 queries)...')
   const [users, packages, allBonuses, distributions, ledger] = await Promise.all([
     prisma.user.findMany({ select: { id: true, user_id: true, name: true, status: true, sponsor_id: true, income_wallet_balance: true } }),
-    prisma.tradePackage.findMany({ select: { id: true, user_id: true, amount: true, status: true, started_at: true, total_earned: true, max_return: true, daily_roi_percent: true } }),
+    prisma.tradePackage.findMany({ select: { id: true, user_id: true, amount: true, status: true, started_at: true, completed_at: true, total_earned: true, max_return: true, daily_roi_percent: true } }),
     prisma.bonus.findMany({ select: { id: true, user_id: true, from_user_id: true, type: true, level: true, amount: true, remarks: true, is_matured: true, created_at: true }, orderBy: { id: 'asc' } }),
     prisma.roiDistribution.findMany({ select: { id: true, package_id: true, user_id: true, amount: true, created_at: true }, orderBy: { id: 'asc' } }),
     prisma.incomeLedger.findMany({ select: { id: true, user_id: true, type: true, amount: true, created_at: true } }),
   ])
+
+  // Build maps for package start dates and sponsors
+  const pkgsByUserId = new Map()
+  for (const p of packages) {
+    if (!pkgsByUserId.has(p.user_id)) pkgsByUserId.set(p.user_id, [])
+    pkgsByUserId.get(p.user_id).push(p)
+  }
+
+  const sponsorReferralsMap = new Map()
+  for (const u of users) {
+    if (u.sponsor_id) {
+      if (!sponsorReferralsMap.has(u.sponsor_id)) sponsorReferralsMap.set(u.sponsor_id, [])
+      sponsorReferralsMap.get(u.sponsor_id).push(u.id)
+    }
+  }
 
   const activePkgSet   = new Set(packages.filter(p => p.status === 'active').map(p => p.user_id))
   const downlineCount  = new Map()
@@ -427,7 +486,7 @@ async function main() {
   console.log(`✅ Loaded: ${users.length} users | ${packages.length} packages | ${distributions.length} ROI dists | ${allBonuses.length} total bonuses | ${ledger.length} ledger entries`)
   console.log(`   Bonus breakdown — trading:${tradingBonuses.length} direct:${directBonuses.length} level:${levelBonuses.length} reward:${rewardBonuses.length} royalty:${royaltyBonuses.length}`)
 
-  const data = { users, packages, allBonuses, distributions, ledger, tradingBonuses, directBonuses, levelBonuses, rewardBonuses, royaltyBonuses, activePkgSet, downlineCount }
+  const data = { users, packages, allBonuses, distributions, ledger, tradingBonuses, directBonuses, levelBonuses, rewardBonuses, royaltyBonuses, activePkgSet, downlineCount, pkgsByUserId, sponsorReferralsMap }
 
   if (SECTION === 'all' || SECTION === 'roi')     await auditROI(data)
   if (SECTION === 'all' || SECTION === 'direct')  await auditDirect(data)

@@ -25,3 +25,6 @@ build/
 Thumbs.db
 
 .vercel
+.env*.local
+.env.vercel.pull*
+server/scratch/
