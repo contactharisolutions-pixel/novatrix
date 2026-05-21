@@ -35,6 +35,7 @@ export default function WithdrawPage() {
 
   const { register, handleSubmit, watch, reset, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
+    mode: 'onChange',
     defaultValues: { amount: 0, pin: '' }
   })
   const amount = watch('amount') || 0
@@ -144,7 +145,7 @@ export default function WithdrawPage() {
                   </div>
                 </div>
 
-                {amount >= 10 && (
+                {amount >= 10 && amount % 10 === 0 && (
                   <div style={{ background: 'rgba(0,212,255,0.03)', border: '1px solid var(--border-cyan)', borderRadius: 'var(--radius-md)', padding: '1.25rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
                       <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Requested Amount</span>
