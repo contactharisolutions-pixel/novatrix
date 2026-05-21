@@ -111,7 +111,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // ─── Health check ─────────────────────────────────────────────
-app.get('/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }))
+app.get('/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString(), debug_version: 'v1.0.12' }))
 
 // Member API
 app.use('/api/auth',          authRoutes)
