@@ -5,11 +5,5 @@
   ],
   "env": {
     "NODE_ENV": "production"
-  },
-  "crons": [
-    {
-      "path": "/api/cron/run",
-      "schedule": "30 18 * * *"
-    }
-  ]
+  }
 }
