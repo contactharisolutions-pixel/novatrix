@@ -42,11 +42,11 @@ router.get('/dashboard', async (req, res, next) => {
       // Active Team (Recursive)
       prisma.$queryRaw`
         WITH RECURSIVE tree AS (
-          SELECT id FROM "User" WHERE sponsor_id = ${req.user.id} AND status = 'active'
+          SELECT id, status FROM "User" WHERE sponsor_id = ${req.user.id}
           UNION ALL
-          SELECT u.id FROM "User" u INNER JOIN tree t ON u.sponsor_id = t.id WHERE u.status = 'active'
+          SELECT u.id, u.status FROM "User" u INNER JOIN tree t ON u.sponsor_id = t.id
         )
-        SELECT COUNT(*) as count FROM tree
+        SELECT COUNT(*) as count FROM tree WHERE status = 'active'
       `,
 
       // Today's Joining (Recursive) — IST timezone
