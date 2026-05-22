@@ -486,7 +486,7 @@ function startROICron() {
   // On Vercel (serverless), node-cron does nothing — the process dies after each request.
   // The daily job is triggered instead via HTTP POST /api/cron/run by Vercel Cron Jobs.
   // Only activate the in-process scheduler when running on a persistent server (local dev / VPS).
-  const isVercelCloud = process.env.VERCEL === '1' && (process.env.VERCEL_REGION || process.env.NOW_REGION)
+  const isVercelCloud = process.env.VERCEL === '1'
   if (isVercelCloud) {
     console.log('[ROI Cron] Running on Vercel Cloud — in-process cron DISABLED. Using Vercel Cron Jobs via /api/cron/run')
     return

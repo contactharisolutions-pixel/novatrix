@@ -153,7 +153,7 @@ app.use((err, _req, res, _next) => {
 })
 
 // ─── Start server (local dev only) / Export for Vercel serverless ─────────
-const isVercelCloud = process.env.VERCEL === '1' && (process.env.VERCEL_REGION || process.env.NOW_REGION)
+const isVercelCloud = process.env.VERCEL === '1'
 if (!isVercelCloud) {
   // Running locally — start the HTTP server and the cron scheduler
   app.listen(PORT, () => {
