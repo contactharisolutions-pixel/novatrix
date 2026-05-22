@@ -446,13 +446,49 @@ async function distributeROIForPackage(packageId) {
 const { processRewards, matureRewards } = require('./rewardEngine')
 const { updateRoyaltyRanks, distributeMonthlyRoyalty } = require('./royaltyEngine')
 
+/** Run daily distribution tasks if they were missed (e.g. server was offline at midnight) */
+async function runMissedCronJobs() {
+  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
+  const istNow = new Date(Date.now() + IST_OFFSET_MS)
+  const day    = istNow.getUTCDay()   // 0=Sun … 6=Sat (correctly in IST)
+  const date   = istNow.getUTCDate()  // day-of-month in IST
+  const todayStr = istNow.toISOString().split('T')[0]
+
+  console.log(`[ROI Cron] Checking for missed cron runs on startup — IST: ${istNow.toISOString()}, day=${day}, date=${date}`)
+
+  // Check if we need to distribute ROI today (Monday to Friday, day 1 to 5)
+  if (day >= 1 && day <= 5) {
+    const todayDistsCount = await prisma.roiDistribution.count({
+      where: {
+        created_at: { gte: new Date(todayStr + 'T00:00:00+05:30') }
+      }
+    })
+
+    if (todayDistsCount === 0) {
+      console.log(`[ROI Cron] Missed daily run detected for today (${todayStr}). Distributing ROI now...`)
+      await distributeROI()
+    } else {
+      console.log(`[ROI Cron] Daily ROI already distributed today (${todayStr}).`)
+    }
+  } else {
+    console.log(`[ROI Cron] Skipping startup ROI check: Today is a weekend (day ${day}).`)
+  }
+
+  // Always run these daily updates on startup to ensure they are current
+  console.log('[ROI Cron] Running daily updates on startup...')
+  await processRewards()
+  await updateRoyaltyRanks()
+  await matureRewards()
+}
+
 /** Schedule: every day at 12:00 AM IST (only on persistent servers) */
 function startROICron() {
   // On Vercel (serverless), node-cron does nothing — the process dies after each request.
   // The daily job is triggered instead via HTTP POST /api/cron/run by Vercel Cron Jobs.
   // Only activate the in-process scheduler when running on a persistent server (local dev / VPS).
-  if (process.env.VERCEL || process.env.VERCEL_ENV) {
-    console.log('[ROI Cron] Running on Vercel — in-process cron DISABLED. Using Vercel Cron Jobs via /api/cron/run')
+  const isVercelCloud = process.env.VERCEL === '1' && (process.env.VERCEL_REGION || process.env.NOW_REGION)
+  if (isVercelCloud) {
+    console.log('[ROI Cron] Running on Vercel Cloud — in-process cron DISABLED. Using Vercel Cron Jobs via /api/cron/run')
     return
   }
 
@@ -475,6 +511,11 @@ function startROICron() {
   }, { timezone: 'Asia/Kolkata' })
 
   console.log('[ROI/Reward/Royalty Cron] Scheduled — runs daily at 12:00 AM IST')
+
+  // Run catch-up for missed jobs in the background on startup
+  runMissedCronJobs().catch(err => {
+    console.error('[ROI Cron] Error running missed cron jobs on startup:', err)
+  })
 }
 
 module.exports = { startROICron, distributeROI, distributeROIForPackage }

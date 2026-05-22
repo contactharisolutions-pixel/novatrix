@@ -50,7 +50,7 @@ async function main() {
 
   for (const member of MEMBERS) {
     // Skip if already seeded
-    const existing = await prisma.user.findUnique({ where: { email: member.email } })
+    const existing = await prisma.user.findFirst({ where: { email: member.email } })
     if (existing) {
       console.log(`   ⏭️   Already exists: ${member.name} (${member.email})`)
       createdUsers[member.email] = existing

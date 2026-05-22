@@ -83,7 +83,7 @@ model User {
   id                    Int          @id @default(autoincrement())
   user_id               String       @unique @db.VarChar(6)
   name                  String
-  email                 String       @unique
+  email                 String
   phone                 String
   password_hash         String
   transaction_pin_hash  String?

@@ -27,7 +27,7 @@ async function run() {
   for (const m of members) {
     try {
       // Check if user already exists
-      const existing = await prisma.user.findUnique({ where: { email: m.email } })
+      const existing = await prisma.user.findFirst({ where: { email: m.email } })
       if (existing) {
         console.log(`User ${m.email} already exists. Skipping...`)
         continue

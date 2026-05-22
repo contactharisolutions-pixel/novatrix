@@ -34,10 +34,6 @@ router.post(
 
     const { name, email, phone, password, referral_code } = req.body
     try {
-      // Check duplicate email
-      const existing = await prisma.user.findUnique({ where: { email } })
-      if (existing) return res.status(409).json({ error: 'Email already registered' })
-
       // Resolve sponsor
       let sponsor = null
       if (referral_code) {
