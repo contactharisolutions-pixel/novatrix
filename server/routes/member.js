@@ -2,6 +2,7 @@ const router       = require('express').Router()
 const bcrypt       = require('bcryptjs')
 const authenticate = require('../middleware/authenticate')
 const prisma = require('../lib/prisma')
+const { getRoiEligibility } = require('../services/businessUtils')
 router.use(authenticate)
 
 // ─── GET /api/member/dashboard ─────────────────────────────────
@@ -22,7 +23,8 @@ router.get('/dashboard', async (req, res, next) => {
 
     const [
       totalTopup, totalWithdraw, totalEarning, teamCount, activeTeamCount, todayJoiningCount, todayBusinessSum, todayActivationCount,
-      totalTeamBusinessSum, todayRoiSum, totalRoiSum, todaySponsorSum, totalSponsorSum, todayLevelSum, totalLevelSum, todayDeactivateJoiningCount
+      totalTeamBusinessSum, todayRoiSum, totalRoiSum, todaySponsorSum, totalSponsorSum, todayLevelSum, totalLevelSum, todayDeactivateJoiningCount,
+      roiEligibility
     ] = await Promise.all([
       // Total Topup = total activated trade packages (self + admin-activated)
       prisma.tradePackage.aggregate({ where: { user_id: req.user.id }, _sum: { amount: true } }),
@@ -150,7 +152,8 @@ router.get('/dashboard', async (req, res, next) => {
         WHERE id IN (SELECT id FROM tree) 
         AND status = 'inactive'
         AND ((created_at AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date
-      `
+      `,
+      getRoiEligibility(req.user.id)
     ])
 
     res.json({
@@ -174,6 +177,7 @@ router.get('/dashboard', async (req, res, next) => {
         today_level_income: Number(todayLevelSum[0]?.total || 0),
         total_level_income: Number(totalLevelSum[0]?.total || 0),
         today_deactivate_joining: Number(todayDeactivateJoiningCount[0]?.count || 0),
+        roi_eligibility: roiEligibility
       },
     })
   } catch (err) { next(err) }

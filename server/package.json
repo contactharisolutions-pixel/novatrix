@@ -2,6 +2,9 @@
   "name": "novatrix-server",
   "version": "1.0.0",
   "description": "Novatrix Investment Platform — Backend API",
+  "engines": {
+    "node": "20.x"
+  },
   "main": "index.js",
   "scripts": {
     "dev": "node --watch index.js",

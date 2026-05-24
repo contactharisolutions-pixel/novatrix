@@ -78,6 +78,69 @@ export default function Dashboard() {
 
   const fmt = (n) => `$${(+n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
+  const eligibility = stats?.roi_eligibility || {
+    status: 'pending_activation',
+    multiplier: 2,
+    activation_date: null,
+    limit_date: null,
+    days_remaining: 15,
+    member_investment_15_days: 0,
+    team_investment_15_days: 0,
+    target_team_investment: 0,
+    progress_percent: 0
+  }
+
+  // Render variables based on status
+  let boosterColor = 'indigo'
+  let boosterBadgeClass = 'bg-indigo-dim'
+  let boosterBadgeText = 'Inactive'
+  let boosterTitle1 = 'Standard Limit'
+  let boosterVal1 = '2.0X'
+  let boosterTitle2 = 'Booster Window'
+  let boosterVal2 = '15 Days'
+  let boosterFooterText = 'Activate a package to start your 15-day 3X ROI booster window!'
+  let boosterProgressPercent = 0
+  let boosterGlowClass = 'bg-indigo-glow'
+  let boosterFillColor = '#6366f1'
+
+  if (eligibility.status === 'pending') {
+    boosterColor = 'orange'
+    boosterBadgeClass = 'bg-orange-dim'
+    boosterBadgeText = `${eligibility.days_remaining}d Left`
+    boosterTitle1 = 'Team Volume'
+    boosterVal1 = fmt(eligibility.team_investment_15_days)
+    boosterTitle2 = 'Target (3X)'
+    boosterVal2 = fmt(eligibility.target_team_investment)
+    boosterFooterText = `Need ${fmt(Math.max(0, eligibility.target_team_investment - eligibility.team_investment_15_days))} more team volume for 3X ROI!`
+    boosterProgressPercent = eligibility.progress_percent
+    boosterGlowClass = 'bg-orange-glow'
+    boosterFillColor = 'var(--orange)'
+  } else if (eligibility.status === 'eligible_3x') {
+    boosterColor = 'emerald'
+    boosterBadgeClass = 'bg-emerald-dim'
+    boosterBadgeText = '3X Active'
+    boosterTitle1 = 'Current Limit'
+    boosterVal1 = '3.0X ROI'
+    boosterTitle2 = 'Team Volume'
+    boosterVal2 = fmt(eligibility.team_investment_15_days)
+    boosterFooterText = 'Excellent! You have unlocked the 3X ROI booster multiplier.'
+    boosterProgressPercent = 100
+    boosterGlowClass = 'bg-emerald-glow'
+    boosterFillColor = 'var(--green)'
+  } else if (eligibility.status === 'eligible_2x') {
+    boosterColor = 'red'
+    boosterBadgeClass = 'bg-red-dim'
+    boosterBadgeText = 'Standard'
+    boosterTitle1 = 'Final Limit'
+    boosterVal1 = '2.0X ROI'
+    boosterTitle2 = 'Booster Window'
+    boosterVal2 = 'Expired'
+    boosterFooterText = 'Booster window expired. Standard 2X ROI limit applies.'
+    boosterProgressPercent = 0
+    boosterGlowClass = 'bg-red-glow'
+    boosterFillColor = 'var(--red)'
+  }
+
   if (loading) return <Spinner />
 
   return (
@@ -244,9 +307,39 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-        <div className="kpi-grid-3">
+        <div className="kpi-grid-4">
+          {/* Booster Status Card */}
+          <div className={`kpi-double-card border-${boosterColor} hover-${boosterColor} animate-fade-in`} style={{ animationDelay: '0.38s' }}>
+            <div className="kpi-double-card-header">
+              <div className="kpi-double-card-title-wrap">
+                <div className={`kpi-card-icon-small bg-${boosterColor}`}><Zap size={15} /></div>
+                <span>ROI 2X / 3X Booster</span>
+              </div>
+              <span className={`kpi-badge ${boosterBadgeClass}`}>{boosterBadgeText}</span>
+            </div>
+            <div className="kpi-double-card-body">
+              <div className="kpi-income-row">
+                <div className="kpi-income-col">
+                  <span className="kpi-income-label">{boosterTitle1}</span>
+                  <h3 className={`kpi-income-value text-${boosterColor}`}>{boosterVal1}</h3>
+                </div>
+                <div className="kpi-income-divider"></div>
+                <div className="kpi-income-col">
+                  <span className="kpi-income-label">{boosterTitle2}</span>
+                  <h4 className="kpi-income-value-sub">{boosterVal2}</h4>
+                </div>
+              </div>
+            </div>
+            <div className="kpi-double-card-footer">
+              <div className={`kpi-progress-bar ${boosterGlowClass}`}>
+                <div className={`kpi-progress-fill bg-${boosterColor}`} style={{ width: `${boosterProgressPercent}%`, backgroundColor: boosterFillColor }}></div>
+              </div>
+              <span className="kpi-card-footer-text">{boosterFooterText}</span>
+            </div>
+          </div>
+
           {/* ROI Income */}
-          <div className="kpi-double-card border-emerald hover-emerald animate-fade-in" style={{ animationDelay: '0.4s' }}>
+          <div className="kpi-double-card border-emerald hover-emerald animate-fade-in" style={{ animationDelay: '0.42s' }}>
             <div className="kpi-double-card-header">
               <div className="kpi-double-card-title-wrap">
                 <div className="kpi-card-icon-small bg-emerald"><TrendingUp size={15} /></div>
@@ -276,7 +369,7 @@ export default function Dashboard() {
           </div>
 
           {/* Sponsor Income */}
-          <div className="kpi-double-card border-violet hover-violet animate-fade-in" style={{ animationDelay: '0.45s' }}>
+          <div className="kpi-double-card border-violet hover-violet animate-fade-in" style={{ animationDelay: '0.46s' }}>
             <div className="kpi-double-card-header">
               <div className="kpi-double-card-title-wrap">
                 <div className="kpi-card-icon-small bg-violet"><Users size={15} /></div>
@@ -831,6 +924,15 @@ export default function Dashboard() {
         .kpi-progress-bar.bg-emerald-glow { background: rgba(16, 185, 129, 0.08); }
         .kpi-progress-bar.bg-violet-glow { background: rgba(139, 92, 246, 0.08); }
         .kpi-progress-bar.bg-orange-glow { background: rgba(249, 115, 22, 0.08); }
+        .kpi-progress-bar.bg-indigo-glow { background: rgba(99, 102, 241, 0.08); }
+        .kpi-progress-bar.bg-red-glow { background: rgba(239, 68, 68, 0.08); }
+
+        .bg-indigo-dim { background: rgba(99, 102, 241, 0.08); color: #818cf8; }
+        .bg-red-dim { background: rgba(239, 68, 68, 0.08); color: var(--red); }
+        .bg-indigo { background: rgba(99, 102, 241, 0.08); color: #818cf8; border-color: rgba(99, 102, 241, 0.15); }
+        .border-indigo { border-color: rgba(99, 102, 241, 0.06); }
+        .hover-indigo:hover { border-color: #6366f1; box-shadow: 0 4px 20px rgba(99, 102, 241, 0.08); }
+        .text-indigo { color: #818cf8; }
 
         .kpi-card-footer-text {
           font-size: 0.65rem;
