@@ -46,8 +46,9 @@ async function getCommissionRates() {
  * @param {number} fromUserId
  * @param {number} level
  * @param {string} remarks
+ * @param {number} packageId
  */
-async function creditBonus(client, userId, amount, bonusType, fromUserId, level, remarks) {
+async function creditBonus(client, userId, amount, bonusType, fromUserId, level, remarks, packageId = null) {
   if (amount <= 0) return
 
   const updated = await client.user.update({
@@ -60,6 +61,7 @@ async function creditBonus(client, userId, amount, bonusType, fromUserId, level,
       data: {
         user_id:      userId,
         from_user_id: fromUserId,
+        package_id:   packageId,
         type:         bonusType,
         level,
         amount,
@@ -100,8 +102,9 @@ async function hasActivePackage(userId) {
  * @param {number} memberId      - The member who invested
  * @param {number} investment    - The invested amount
  * @param {Date}   activatedAt   - When the member's package was activated (defaults to now)
+ * @param {number} packageId     - The package ID that triggered this bonus
  */
-async function triggerDirectAndLevelBonus(memberId, investment, activatedAt = new Date()) {
+async function triggerDirectAndLevelBonus(memberId, investment, activatedAt = new Date(), packageId = null) {
   const rates = await getCommissionRates()
 
   const current = await prisma.user.findUnique({ 
@@ -148,7 +151,8 @@ async function triggerDirectAndLevelBonus(memberId, investment, activatedAt = ne
         'direct',
         memberId,
         1,
-        `Direct referral bonus from ${current.user_id}`
+        `Direct referral bonus from ${current.user_id}`,
+        packageId
       )
     })
   }
@@ -166,8 +170,11 @@ async function triggerDirectAndLevelBonus(memberId, investment, activatedAt = ne
  * @param {number} memberId      - The member who generated ROI
  * @param {string} memberUserId  - Display ID for ledger remarks
  * @param {number} roiAmount     - The ROI amount generated
+ * @param {Map}    userMap       - Optional cached map for sponsors
+ * @param {Date}   distributionDate - When the distribution occurred
+ * @param {number} packageId     - The package ID that generated this ROI
  */
-async function triggerROIMatchingBonus(memberId, memberUserId, roiAmount, userMap = null, distributionDate = new Date()) {
+async function triggerROIMatchingBonus(memberId, memberUserId, roiAmount, userMap = null, distributionDate = new Date(), packageId = null) {
   const rates = await getCommissionRates()
   const LEVEL_RATES = rates.levels
 
@@ -257,6 +264,7 @@ async function triggerROIMatchingBonus(memberId, memberUserId, roiAmount, userMa
             where: {
               user_id:      sponsorId,
               from_user_id: memberId,
+              package_id:   packageId,
               type:         'level',
               level,
               created_at:   { gte: dayStart, lte: dayEnd },
@@ -276,6 +284,7 @@ async function triggerROIMatchingBonus(memberId, memberUserId, roiAmount, userMa
                 memberId,
                 level,
                 `Level ${level} ROI matching bonus from ${memberUserId}`,
+                packageId
               )
             })
           }

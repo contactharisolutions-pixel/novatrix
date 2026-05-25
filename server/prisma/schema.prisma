@@ -187,6 +187,7 @@ model TradePackage {
   started_at        DateTime        @default(now())
   completed_at      DateTime?
   roi_distributions RoiDistribution[]
+  bonuses           Bonus[]
 
   @@map("TradePackage")
 }
@@ -211,6 +212,8 @@ model Bonus {
   user         User      @relation("BonusRecipient", fields: [user_id], references: [id])
   from_user_id Int?
   from_user    User?     @relation("BonusFrom", fields: [from_user_id], references: [id])
+  package_id   Int?
+  package      TradePackage? @relation(fields: [package_id], references: [id])
   type         BonusType
   level        Int       @default(0)
   amount       Decimal   @db.Decimal(18, 2)

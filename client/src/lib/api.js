@@ -3,6 +3,11 @@ import axios from 'axios'
 const getBaseUrl = () => {
   // In production: VITE_API_URL must be set in Vercel env vars (e.g. https://novatrix-server.vercel.app)
   if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL.replace(/\/$/, '')
+  // Fallback for production deployments where VITE_API_URL is not set (e.g. empty string in Vercel env)
+  // Match the same hardcoded fallback used by useAdminStore.js
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return 'https://novatrix-server.vercel.app'
+  }
   // In local dev: empty string → Vite proxy handles /api → http://localhost:5000
   return ''
 }

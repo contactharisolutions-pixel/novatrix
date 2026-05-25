@@ -93,6 +93,7 @@ router.post('/activate-for-other', async (req, res, next) => {
     }
     const maxReturn = amt * maxMultiplier
 
+    let createdPkgId = null
     await prisma.$transaction(async (tx) => {
       // 1. Deduct from sender fund wallet
       const updatedSender = await tx.user.update({
@@ -101,7 +102,7 @@ router.post('/activate-for-other', async (req, res, next) => {
       })
 
       // 2. Create package for target
-      await tx.tradePackage.create({
+      const newPkg = await tx.tradePackage.create({
         data: {
           user_id:          target.id,
           amount:           amt,
@@ -110,6 +111,7 @@ router.post('/activate-for-other', async (req, res, next) => {
           status:           'active',
         }
       })
+      createdPkgId = newPkg.id
 
       // 3. Activate target if inactive
       if (target.status === 'inactive') {
@@ -135,7 +137,7 @@ router.post('/activate-for-other', async (req, res, next) => {
     // Trigger bonuses BEFORE sending response — ensures bonus runs even in serverless environments
     // where async work after res.json() may be killed immediately.
     if (target.sponsor_id) {
-      await triggerDirectAndLevelBonus(target.id, amt, new Date()).catch(err => {
+      await triggerDirectAndLevelBonus(target.id, amt, new Date(), createdPkgId).catch(err => {
         console.error('[ActivateForOther] Bonus trigger failed:', err.message)
       })
     }
@@ -230,7 +232,7 @@ router.post('/invest', async (req, res, next) => {
     // Trigger bonuses BEFORE sending response — ensures bonus runs even in serverless environments
     // where async work after res.json() may be killed immediately.
     if (user.sponsor_id) {
-      await triggerDirectAndLevelBonus(req.user.id, parseFloat(amount), pkg.started_at).catch(err => {
+      await triggerDirectAndLevelBonus(req.user.id, parseFloat(amount), pkg.started_at, pkg.id).catch(err => {
         console.error('[Invest] Bonus trigger failed:', err.message)
       })
     }

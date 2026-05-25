@@ -74,36 +74,19 @@ router.get('/report', async (req, res, next) => {
       orderBy: { created_at: 'desc' },
       include: {
         from_user: {
-          select: { 
-            user_id: true, 
-            name: true,
-            packages: {
-              select: { amount: true, started_at: true }
-            }
-          }
+          select: { user_id: true, name: true }
+        },
+        package: {
+          select: { id: true, amount: true }
         }
       }
     })
 
-    const formattedRecords = records.map(r => {
-      let packageAmount = null;
-      if (r.from_user && r.from_user.packages && r.from_user.packages.length > 0) {
-        if (type === 'direct') {
-          // Direct bonus is given on activation, find matching package within 2 minutes
-          const pkg = r.from_user.packages.find(p => Math.abs(new Date(p.started_at).getTime() - new Date(r.created_at).getTime()) < 120000);
-          packageAmount = pkg ? pkg.amount : r.from_user.packages[r.from_user.packages.length - 1].amount;
-        } else {
-          // For other types (like level), just sum their active packages
-          packageAmount = r.from_user.packages.reduce((sum, p) => sum + Number(p.amount), 0);
-        }
-      }
-      
-      return {
-        ...r,
-        from_user: r.from_user ? { user_id: r.from_user.user_id, name: r.from_user.name } : null,
-        package_amount: packageAmount
-      }
-    })
+    const formattedRecords = records.map(r => ({
+      ...r,
+      from_user:      r.from_user ? { user_id: r.from_user.user_id, name: r.from_user.name } : null,
+      package_amount: r.package ? r.package.amount : null,
+    }))
 
     res.json({ records: formattedRecords })
   } catch (err) { 

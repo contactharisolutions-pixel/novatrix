@@ -39,7 +39,7 @@ async function getLegBusiness(userId) {
 async function getRoiEligibility(userId) {
   // Single combined SQL query: fetch user packages + downline team investment in one round trip
   const [roiRow] = await prisma.$queryRaw`
-    WITH
+    WITH RECURSIVE
       -- User's own packages sorted ascending (to find activation date)
       user_pkgs AS (
         SELECT amount, started_at

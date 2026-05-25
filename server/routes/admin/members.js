@@ -198,9 +198,10 @@ router.post('/:id/activate-package', async (req, res, next) => {
     }
     const maxReturn = amt * maxMultiplier
 
+    let createdPkgId = null
     await prisma.$transaction(async (tx) => {
       // 1. Create Trade Package Directly (No Fund Allotment Required)
-      await tx.tradePackage.create({
+      const newPkg = await tx.tradePackage.create({
         data: {
           user_id: target.id,
           amount: amt,
@@ -209,6 +210,7 @@ router.post('/:id/activate-package', async (req, res, next) => {
           status: 'active',
         }
       })
+      createdPkgId = newPkg.id
 
       // 4. Update status if inactive
       if (target.status === 'inactive' || target.status === 'blocked') {
@@ -222,7 +224,7 @@ router.post('/:id/activate-package', async (req, res, next) => {
     // Trigger bonuses BEFORE sending response — ensures bonus runs even in serverless environments
     // where async work after res.json() may be killed immediately.
     if (target.sponsor_id) {
-      await triggerDirectAndLevelBonus(target.id, amt, new Date()).catch(err => {
+      await triggerDirectAndLevelBonus(target.id, amt, new Date(), createdPkgId).catch(err => {
         console.error('[ActivatePackage] Bonus trigger failed:', err.message)
       })
     }

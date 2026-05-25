@@ -256,7 +256,9 @@ async function distributeROI() {
           pkg.user_id,
           userDisplayIdMap.get(pkg.user_id) || 'Member',
           creditable,
-          userMap
+          userMap,
+          new Date(),
+          pkg.id
         )
       } catch (err) {
         console.error(`[ROI Cron] Matching bonus error for package #${pkg.id}:`, err.message)
@@ -433,7 +435,9 @@ async function distributeROIForPackage(packageId) {
       pkg.user_id,
       userDisplayId,
       creditable,
-      null // pass null to dynamically crawl sponsor chain up to 15 levels
+      null, // pass null to dynamically crawl sponsor chain up to 15 levels
+      new Date(),
+      pkg.id
     )
   } catch (err) {
     console.error(`[ROI Single] Matching bonus error for package #${pkg.id}:`, err.message)

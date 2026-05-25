@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { CheckCircle, XCircle, Loader2, User, DollarSign, Wallet, Hash, AlertTriangle } from 'lucide-react'
+import { CheckCircle, XCircle, Loader2, User, DollarSign, Wallet, Hash, AlertTriangle, Download } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { adminApi } from '../../store/useAdminStore'
 import { AdminPageHeader, AdminTable, StatusBadge, AdminModal, AdminSpinner, Pagination } from '../../components/admin/ui'
@@ -69,10 +69,43 @@ export default function WithdrawalsPage() {
     finally { setActLoading(false) }
   }
 
+  const [exporting, setExporting] = useState(false)
+
+  const exportToExcel = async () => {
+    setExporting(true)
+    try {
+      const res = await adminApi.get('/reports/csv', {
+        params: { type: 'withdrawals', format: 'excel' },
+        responseType: 'blob',
+      })
+      const url = URL.createObjectURL(new Blob([res.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `novatrix-withdrawals-export-${new Date().toISOString().slice(0, 10)}.xlsx`
+      link.click()
+      URL.revokeObjectURL(url)
+      toast.success('Excel export complete.')
+    } catch {
+      toast.error('Export failed.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const cols = [
-    ...COLS,
+    { 
+      key: 'sno', 
+      label: 'Sr.No', 
+      render: (_, __, i) => (
+        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem', color: 'var(--text-faint)' }}>
+          {(page - 1) * 20 + i + 1}
+        </span>
+      ) 
+    },
+    ...COLS.slice(1),
     {
-      key: 'id', label: 'Action',
+      key: 'action',
+      label: 'Action',
       render: (id, row) => row.status === 'pending' ? (
         <button onClick={() => { setModal(row); setTxHash(''); setRejectReason('') }} className="btn-primary" style={{ padding: '0.375rem 0.875rem', fontSize: '0.6875rem', fontWeight: 900 }}>
           PROCESS
@@ -83,7 +116,39 @@ export default function WithdrawalsPage() {
 
   return (
     <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap-lg)' }}>
-      <AdminPageHeader title="Withdrawals" subtitle={`Manage ${total} user withdrawals`} />
+      <AdminPageHeader 
+        title="Withdrawals" 
+        subtitle={`Manage ${total} user withdrawals`} 
+        action={
+          <button 
+            onClick={exportToExcel} 
+            disabled={exporting}
+            className="btn-secondary" 
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.5rem', 
+              padding: '0.5rem 1rem', 
+              fontSize: '0.75rem', 
+              fontWeight: 800,
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em'
+            }}
+          >
+            {exporting ? (
+              <>
+                <Loader2 size={14} className="animate-spin" />
+                <span>Exporting...</span>
+              </>
+            ) : (
+              <>
+                <Download size={14} />
+                <span>Export to Excel</span>
+              </>
+            )}
+          </button>
+        }
+      />
 
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
         {['pending','approved','rejected'].map((s) => (
