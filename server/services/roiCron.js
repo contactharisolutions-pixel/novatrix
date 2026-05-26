@@ -101,9 +101,12 @@ async function distributeROI() {
     }
   }
 
-  // Query 3: Fetch all active trade packages to process
+  // Query 3: Fetch all active trade packages to process (exclude blocked users)
   const activePackages = await prisma.tradePackage.findMany({
-    where: { status: 'active' },
+    where: {
+      status: 'active',
+      user: { status: { not: 'blocked' } }
+    },
   })
 
   // Query 4: Fetch all trade packages in the database to calculate activation and volumes in memory
@@ -284,9 +287,13 @@ function pickTradingPair() {
 async function distributeROIForPackage(packageId) {
   console.log(`[ROI Single] Processing package #${packageId} — ${new Date().toISOString()}`)
 
-  // 1. Fetch the target package
-  const pkg = await prisma.tradePackage.findUnique({
-    where: { id: packageId, status: 'active' },
+  // 1. Fetch the target package (exclude if owner is blocked)
+  const pkg = await prisma.tradePackage.findFirst({
+    where: {
+      id: packageId,
+      status: 'active',
+      user: { status: { not: 'blocked' } }
+    },
   })
   if (!pkg) {
     console.log(`[ROI Single] Package #${packageId} not found or not active. Skipping.`)

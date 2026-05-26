@@ -135,6 +135,7 @@ router.post('/refresh', async (req, res, next) => {
     const payload = jwt.verify(refresh, process.env.JWT_REFRESH_SECRET)
     const user    = await prisma.user.findUnique({ where: { id: payload.id } })
     if (!user) return res.status(401).json({ error: 'User not found' })
+    if (user.status === 'blocked') return res.status(403).json({ error: 'Account suspended' })
     const token = signToken({ id: user.id, user_id: user.user_id })
     res.json({ token })
   } catch {

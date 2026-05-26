@@ -19,6 +19,7 @@ const ROYALTY_RANKS = [
 async function updateRoyaltyRanks() {
   console.log('[RoyaltyEngine] Updating royalty ranks...')
   const users = await prisma.user.findMany({
+    where: { status: { not: 'blocked' } },
     select: { id: true, royalty_rank_id: true, user_id: true }
   })
 
@@ -90,7 +91,10 @@ async function distributeMonthlyRoyalty() {
     // Wording: "Member will get... if his team reach X". 
     // I'll assume they get the share of their specific pool.
     const qualifiers = await prisma.user.findMany({
-      where: { royalty_rank_id: rank.id },
+      where: { 
+        royalty_rank_id: rank.id,
+        status: { not: 'blocked' }
+      },
       select: { id: true, user_id: true }
     })
 

@@ -164,15 +164,14 @@ router.post('/queue-roi', verifyCronSecret, async (req, res) => {
   const startTime = Date.now()
   try {
     const qstashToken = process.env.QSTASH_TOKEN
-    const appUrl      = process.env.APP_URL
+    const reqProtocol = req.headers['x-forwarded-proto'] || req.protocol
+    const reqHost     = req.headers['x-forwarded-host'] || req.get('host')
+    const appUrl      = (process.env.APP_URL || `${reqProtocol}://${reqHost}`).replace(/\/$/, '')
     const cronSecret  = process.env.CRON_SECRET
     const qstashUrl   = process.env.QSTASH_URL || 'https://qstash.upstash.io'
 
     if (!qstashToken) {
       return res.status(500).json({ success: false, error: 'QSTASH_TOKEN not configured' })
-    }
-    if (!appUrl) {
-      return res.status(500).json({ success: false, error: 'APP_URL not configured' })
     }
 
     const now  = new Date()

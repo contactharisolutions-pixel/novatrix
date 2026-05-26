@@ -33,6 +33,7 @@ const { getLegBusiness } = require('./businessUtils')
 async function processRewards() {
   console.log('[RewardEngine] Processing performance rewards...')
   const users = await prisma.user.findMany({
+    where: { status: { not: 'blocked' } },
     select: { id: true, rank_id: true, user_id: true }
   })
 
@@ -89,7 +90,8 @@ async function matureRewards() {
     where: {
       type: 'reward',
       is_matured: false,
-      created_at: { lte: thirtyDaysAgo }
+      created_at: { lte: thirtyDaysAgo },
+      user: { status: { not: 'blocked' } }
     }
   })
 
