@@ -259,4 +259,14 @@ router.get('/health', (_req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() })
 })
 
+router.get('/debug-env', verifyCronSecret, (req, res) => {
+  res.json({
+    qstashTokenLength: process.env.QSTASH_TOKEN ? process.env.QSTASH_TOKEN.length : 0,
+    qstashTokenPrefix: process.env.QSTASH_TOKEN ? process.env.QSTASH_TOKEN.slice(0, 10) : 'none',
+    qstashTokenSuffix: process.env.QSTASH_TOKEN ? process.env.QSTASH_TOKEN.slice(-10) : 'none',
+    qstashUrl: process.env.QSTASH_URL || 'none',
+    cronSecretLength: process.env.CRON_SECRET ? process.env.CRON_SECRET.length : 0
+  })
+})
+
 module.exports = router
