@@ -20,7 +20,7 @@ async function setupQStash() {
     process.exit(1)
   }
 
-  const qstashUrl   = process.env.QSTASH_URL || 'https://qstash.upstash.io'
+  const qstashUrl   = process.env.QSTASH_URL || 'https://qstash-us-east-1.upstash.io'
   const destination = `${appUrl}/api/cron/queue-roi`
   const scheduleUrl = `${qstashUrl}/v2/schedules/${destination}`
 
