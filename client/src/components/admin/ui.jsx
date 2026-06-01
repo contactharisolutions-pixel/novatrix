@@ -1,3 +1,5 @@
+import { createPortal } from 'react-dom'
+
 /* ─── Shared Admin UI Primitives ────────────────────────────── */
 
 export function AdminPageHeader({ title, subtitle, action }) {
@@ -131,8 +133,8 @@ export function StatusBadge({ status }) {
 }
 
 export function AdminModal({ title, onClose, children }) {
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+  const modalContent = (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}>
       <div
         style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(12px)' }}
         className="fade-in"
@@ -150,9 +152,9 @@ export function AdminModal({ title, onClose, children }) {
       }} className="scale-in">
         {/* Top accent */}
         <div style={{ height: 4, background: 'linear-gradient(90deg, var(--orange), var(--red))' }} />
-        <div style={{ padding: '1.5rem', flex: 1, overflowY: 'auto' }}>
+        <div style={{ padding: '1.5rem', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-            <h3 style={{ fontWeight: 900, fontSize: '1.125rem', fontFamily: 'Outfit, sans-serif', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+            <h3 style={{ fontWeight: 900, fontSize: '1.125rem', fontFamily: 'Outfit, sans-serif', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.02em', margin: 0 }}>
               {title}
             </h3>
             <button
@@ -161,7 +163,7 @@ export function AdminModal({ title, onClose, children }) {
                 background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)',
                 borderRadius: 'var(--radius-sm)', width: 32, height: 32, cursor: 'pointer',
                 color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'var(--transition-normal)', fontSize: '1.25rem'
+                transition: 'var(--transition-normal)', fontSize: '1.25rem', padding: 0
               }}
               onMouseEnter={e => { e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = 'white' }}
               onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border)' }}
@@ -169,11 +171,15 @@ export function AdminModal({ title, onClose, children }) {
               ×
             </button>
           </div>
-          {children}
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            {children}
+          </div>
         </div>
       </div>
     </div>
   )
+
+  return createPortal(modalContent, document.body)
 }
 
 export function AdminSpinner() {

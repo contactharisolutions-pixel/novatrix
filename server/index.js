@@ -44,6 +44,7 @@ const genealogyRoutes     = require('./routes/genealogy')
 const publicRoutes        = require('./routes/public')
 const fundRoutes          = require('./routes/funds')
 const cronRoutes          = require('./routes/cron')
+const nowpaymentsRoutes   = require('./routes/nowpayments')
 
 // Admin routes
 const adminAuthRoutes         = require('./routes/admin/auth')
@@ -128,6 +129,7 @@ app.use('/api/announcements', announcementRoutes)
 app.use('/api/public',        publicRoutes)
 app.use('/api/funds',         fundRoutes)
 app.use('/api/cron',          cronRoutes)
+app.use('/api/nowpayments',   nowpaymentsRoutes)
 
 // Admin API
 app.use('/api/admin/auth',          adminAuthRoutes)

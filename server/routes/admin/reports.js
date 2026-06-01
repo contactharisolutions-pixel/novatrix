@@ -11,6 +11,7 @@ router.use(authenticateAdmin)
 router.get('/csv', async (req, res, next) => {
   const type   = req.query.type   || 'members'
   const format = req.query.format || 'csv'
+  const status = req.query.status
   const from   = req.query.from ? new Date(req.query.from) : undefined
   const to     = req.query.to   ? new Date(req.query.to)   : undefined
 
@@ -38,7 +39,10 @@ router.get('/csv', async (req, res, next) => {
       ])
     } else if (type === 'deposits') {
       const deposits = await prisma.deposit.findMany({
-        where: dateRange,
+        where: {
+          ...dateRange,
+          ...(status && status !== 'all') && { status }
+        },
         orderBy: { created_at: 'desc' },
         include: { user: { select: { user_id: true, name: true } } },
       })
@@ -49,7 +53,10 @@ router.get('/csv', async (req, res, next) => {
       ])
     } else if (type === 'withdrawals') {
       const wds = await prisma.withdrawal.findMany({
-        where: dateRange,
+        where: {
+          ...dateRange,
+          ...(status && status !== 'all') && { status }
+        },
         orderBy: { created_at: 'desc' },
         include: { user: { select: { user_id: true, name: true } } },
       })

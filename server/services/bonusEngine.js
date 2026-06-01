@@ -185,6 +185,17 @@ async function triggerROIMatchingBonus(memberId, memberUserId, roiAmount, userMa
   const dayStart      = new Date(todayStr + 'T00:00:00+05:30')
   const dayEnd        = new Date(todayStr + 'T23:59:59+05:30')
 
+  // Pre-fetch all matching level bonuses already paid today for this package in a single query
+  const todayPaidBonuses = packageId ? await prisma.bonus.findMany({
+    where: {
+      package_id: packageId,
+      type:       'level',
+      created_at: { gte: dayStart, lte: dayEnd },
+    },
+    select: { level: true, user_id: true }
+  }) : []
+  const todayPaidSet = new Set(todayPaidBonuses.map(b => `${b.level}-${b.user_id}`))
+
   // Dynamically build userMap if not provided
   if (!userMap) {
     userMap = new Map()
@@ -259,17 +270,8 @@ async function triggerROIMatchingBonus(memberId, memberUserId, roiAmount, userMa
         const rate     = LEVEL_RATES[level] || 0
         const bonusAmt = parseFloat((roiAmount * rate / 100).toFixed(2))
         if (bonusAmt > 0) {
-          // FIX: Same-day idempotency — skip if this level bonus was already credited today
-          const alreadyPaid = await prisma.bonus.findFirst({
-            where: {
-              user_id:      sponsorId,
-              from_user_id: memberId,
-              package_id:   packageId,
-              type:         'level',
-              level,
-              created_at:   { gte: dayStart, lte: dayEnd },
-            },
-          })
+          // In-memory idempotency check (extremely fast O(1))
+          const alreadyPaid = todayPaidSet.has(`${level}-${sponsorId}`)
 
           if (alreadyPaid) {
             console.log(`[Bonus] Level ${level} bonus to sponsor #${sponsorId} from member #${memberId} already paid today — skipping.`)

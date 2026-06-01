@@ -75,16 +75,16 @@ export default function WithdrawalsPage() {
     setExporting(true)
     try {
       const res = await adminApi.get('/reports/csv', {
-        params: { type: 'withdrawals', format: 'excel' },
+        params: { type: 'withdrawals', format: 'excel', status },
         responseType: 'blob',
       })
       const url = URL.createObjectURL(new Blob([res.data]))
       const link = document.createElement('a')
       link.href = url
-      link.download = `novatrix-withdrawals-export-${new Date().toISOString().slice(0, 10)}.xlsx`
+      link.download = `novatrix-withdrawals-${status}-export-${new Date().toISOString().slice(0, 10)}.xlsx`
       link.click()
       URL.revokeObjectURL(url)
-      toast.success('Excel export complete.')
+      toast.success(`Excel export for ${status.toUpperCase()} withdrawals complete.`);
     } catch {
       toast.error('Export failed.')
     } finally {

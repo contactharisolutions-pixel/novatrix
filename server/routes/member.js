@@ -5,6 +5,91 @@ const prisma = require('../lib/prisma')
 const { getRoiEligibility } = require('../services/businessUtils')
 router.use(authenticate)
 
+// Helper function: Calculate ROI eligibility in-memory
+function getRoiEligibilityInMemory(userPackages, downlinePackages) {
+  if (!userPackages || userPackages.length === 0) {
+    return {
+      status: 'pending_activation',
+      multiplier: 2,
+      activation_date: null,
+      limit_date: null,
+      days_remaining: 15,
+      member_investment_15_days: 0,
+      team_investment_15_days: 0,
+      target_team_investment: 0,
+      progress_percent: 0
+    }
+  }
+
+  const activation_date = userPackages[0].started_at
+  const limit_date = new Date(new Date(activation_date).getTime() + 15 * 24 * 60 * 60 * 1000)
+
+  let member_investment_15_days = 0
+  for (const pkg of userPackages) {
+    if (new Date(pkg.started_at) <= limit_date) {
+      member_investment_15_days += parseFloat(pkg.amount || 0)
+    }
+  }
+
+  let team_investment_15_days = 0
+  for (const pkg of downlinePackages) {
+    if (new Date(pkg.started_at) <= limit_date) {
+      team_investment_15_days += parseFloat(pkg.amount || 0)
+    }
+  }
+
+  if (member_investment_15_days === 0) {
+    return {
+      status: 'pending_activation',
+      multiplier: 2,
+      activation_date,
+      limit_date,
+      days_remaining: 15,
+      member_investment_15_days: 0,
+      team_investment_15_days: 0,
+      target_team_investment: 0,
+      progress_percent: 0
+    }
+  }
+
+  const target_team_investment = 3 * member_investment_15_days
+  const is_eligible_3x = team_investment_15_days >= target_team_investment
+  const now = new Date()
+  const is_window_active = now <= limit_date
+
+  let days_remaining = 0
+  if (is_window_active) {
+    const time_diff = limit_date.getTime() - now.getTime()
+    days_remaining = Math.max(0, Math.ceil(time_diff / (1000 * 60 * 60 * 24)))
+  }
+
+  let status = 'eligible_2x'
+  let multiplier = 2
+  if (is_eligible_3x) {
+    status = 'eligible_3x'
+    multiplier = 3
+  } else if (is_window_active) {
+    status = 'pending'
+    multiplier = 2
+  }
+
+  const progress_percent = target_team_investment > 0
+    ? Math.min(100, Math.round((team_investment_15_days / target_team_investment) * 100))
+    : 0
+
+  return {
+    status,
+    multiplier,
+    activation_date,
+    limit_date,
+    days_remaining,
+    member_investment_15_days,
+    team_investment_15_days,
+    target_team_investment,
+    progress_percent
+  }
+}
+
 // ─── GET /api/member/dashboard ─────────────────────────────────
 router.get('/dashboard', async (req, res, next) => {
   try {
@@ -21,163 +106,152 @@ router.get('/dashboard', async (req, res, next) => {
     })
     if (!user) return res.status(404).json({ error: 'User not found' })
 
-    const [
-      totalTopup, totalWithdraw, totalEarning, teamCount, activeTeamCount, todayJoiningCount, todayBusinessSum, todayActivationCount,
-      totalTeamBusinessSum, todayRoiSum, totalRoiSum, todaySponsorSum, totalSponsorSum, todayLevelSum, totalLevelSum, todayDeactivateJoiningCount,
-      roiEligibility
-    ] = await Promise.all([
-      // Total Topup = total activated trade packages (self + admin-activated)
+    const getKolkataDateString = (date) => {
+      return new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).format(date)
+    }
+    const todayStr = getKolkataDateString(new Date())
+
+    // 1. Fetch user's recursive downline user IDs & statuses in one single tree traversal
+    const downline = await prisma.$queryRaw`
+      WITH RECURSIVE tree AS (
+        SELECT id, status, created_at FROM "User" WHERE sponsor_id = ${req.user.id}
+        UNION ALL
+        SELECT u.id, u.status, u.created_at FROM "User" u INNER JOIN tree t ON u.sponsor_id = t.id
+      )
+      SELECT id, status, created_at FROM tree
+    `
+
+    const team_total = downline.length
+    const active_team = downline.filter(u => u.status === 'active').length
+    
+    let today_joining = 0
+    let today_deactivate_joining = 0
+    for (const u of downline) {
+      if (getKolkataDateString(new Date(u.created_at)) === todayStr) {
+        today_joining++
+        if (u.status === 'inactive') {
+          today_deactivate_joining++
+        }
+      }
+    }
+
+    const downlineIds = downline.map(u => u.id)
+
+    // 2. Fetch downline trade packages, user's own trade packages, aggregates & bonus groupings in parallel
+    let today_business = 0
+    let total_team_business = 0
+    let today_activation = 0
+    let downlinePackages = []
+
+    const [packages, userPackages, totalTopup, totalWithdraw, bonusSums] = await Promise.all([
+      downlineIds.length > 0
+        ? prisma.tradePackage.findMany({
+            where: { user_id: { in: downlineIds } },
+            select: { amount: true, started_at: true, user_id: true }
+          })
+        : Promise.resolve([]),
+      prisma.tradePackage.findMany({
+        where: { user_id: req.user.id },
+        orderBy: { started_at: 'asc' }
+      }),
       prisma.tradePackage.aggregate({ where: { user_id: req.user.id }, _sum: { amount: true } }),
       prisma.withdrawal.aggregate({ where: { user_id: req.user.id, status: 'approved' }, _sum: { amount: true } }),
-      prisma.bonus.aggregate({ where: { user_id: req.user.id }, _sum: { amount: true } }),
-      
-      // Total Team (Recursive)
       prisma.$queryRaw`
-        WITH RECURSIVE tree AS (
-          SELECT id FROM "User" WHERE sponsor_id = ${req.user.id}
-          UNION ALL
-          SELECT u.id FROM "User" u INNER JOIN tree t ON u.sponsor_id = t.id
-        )
-        SELECT COUNT(*) as count FROM tree
-      `,
-
-      // Active Team (Recursive)
-      prisma.$queryRaw`
-        WITH RECURSIVE tree AS (
-          SELECT id, status FROM "User" WHERE sponsor_id = ${req.user.id}
-          UNION ALL
-          SELECT u.id, u.status FROM "User" u INNER JOIN tree t ON u.sponsor_id = t.id
-        )
-        SELECT COUNT(*) as count FROM tree WHERE status = 'active'
-      `,
-
-      // Today's Joining (Recursive) — IST timezone
-      prisma.$queryRaw`
-        WITH RECURSIVE tree AS (
-          SELECT id FROM "User" WHERE sponsor_id = ${req.user.id}
-          UNION ALL
-          SELECT u.id FROM "User" u INNER JOIN tree t ON u.sponsor_id = t.id
-        )
-        SELECT COUNT(*) as count FROM "User" 
-        WHERE id IN (SELECT id FROM tree) 
-        AND ((created_at AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date
-      `,
-
-      // Today's Business (Recursive Sum of Trade Packages) — IST timezone
-      prisma.$queryRaw`
-        WITH RECURSIVE tree AS (
-          SELECT id FROM "User" WHERE sponsor_id = ${req.user.id}
-          UNION ALL
-          SELECT u.id FROM "User" u INNER JOIN tree t ON u.sponsor_id = t.id
-        )
-        SELECT SUM(amount) as total FROM "TradePackage" 
-        WHERE user_id IN (SELECT id FROM tree) 
-        AND ((started_at AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date
-      `,
-
-      // Today's Activations (Users who got their FIRST package today in downline) — IST timezone
-      prisma.$queryRaw`
-        WITH RECURSIVE tree AS (
-          SELECT id FROM "User" WHERE sponsor_id = ${req.user.id}
-          UNION ALL
-          SELECT u.id FROM "User" u INNER JOIN tree t ON u.sponsor_id = t.id
-        )
-        SELECT COUNT(DISTINCT user_id) as count FROM "TradePackage"
-        WHERE user_id IN (SELECT id FROM tree)
-        AND ((started_at AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date
-        AND user_id NOT IN (
-          SELECT user_id FROM "TradePackage" 
-          WHERE ((started_at AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Kolkata')::date < (NOW() AT TIME ZONE 'Asia/Kolkata')::date
-        )
-      `,
-
-      // Total Team Business (Recursive Sum of Trade Packages)
-      prisma.$queryRaw`
-        WITH RECURSIVE tree AS (
-          SELECT id FROM "User" WHERE sponsor_id = ${req.user.id}
-          UNION ALL
-          SELECT u.id FROM "User" u INNER JOIN tree t ON u.sponsor_id = t.id
-        )
-        SELECT SUM(amount) as total FROM "TradePackage" 
-        WHERE user_id IN (SELECT id FROM tree)
-      `,
-
-      // Today's ROI
-      prisma.$queryRaw`
-        SELECT SUM(amount) as total FROM "Bonus"
-        WHERE user_id = ${req.user.id} AND type = 'trading'::"BonusType"
-        AND ((created_at AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date
-      `,
-
-      // Total ROI
-      prisma.$queryRaw`
-        SELECT SUM(amount) as total FROM "Bonus"
-        WHERE user_id = ${req.user.id} AND type = 'trading'::"BonusType"
-      `,
-
-      // Today's Sponsor Income
-      prisma.$queryRaw`
-        SELECT SUM(amount) as total FROM "Bonus"
-        WHERE user_id = ${req.user.id} AND type = 'direct'::"BonusType"
-        AND ((created_at AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date
-      `,
-
-      // Total Sponsor Income
-      prisma.$queryRaw`
-        SELECT SUM(amount) as total FROM "Bonus"
-        WHERE user_id = ${req.user.id} AND type = 'direct'::"BonusType"
-      `,
-
-      // Today's Level Income
-      prisma.$queryRaw`
-        SELECT SUM(amount) as total FROM "Bonus"
-        WHERE user_id = ${req.user.id} AND type = 'level'::"BonusType"
-        AND ((created_at AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date
-      `,
-
-      // Total Level Income
-      prisma.$queryRaw`
-        SELECT SUM(amount) as total FROM "Bonus"
-        WHERE user_id = ${req.user.id} AND type = 'level'::"BonusType"
-      `,
-
-      // Today's Deactivate Joining (Recursive) — IST timezone
-      prisma.$queryRaw`
-        WITH RECURSIVE tree AS (
-          SELECT id FROM "User" WHERE sponsor_id = ${req.user.id}
-          UNION ALL
-          SELECT u.id FROM "User" u INNER JOIN tree t ON u.sponsor_id = t.id
-        )
-        SELECT COUNT(*) as count FROM "User" 
-        WHERE id IN (SELECT id FROM tree) 
-        AND status = 'inactive'
-        AND ((created_at AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date
-      `,
-      getRoiEligibility(req.user.id)
+        SELECT 
+          type,
+          SUM(amount)::float as total,
+          SUM(CASE WHEN ((created_at AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date THEN amount ELSE 0 END)::float as today
+        FROM "Bonus"
+        WHERE user_id = ${req.user.id}
+        GROUP BY type
+      `
     ])
+
+    downlinePackages = packages
+
+    // Calculate in-memory downline stats
+    const firstPkgTimeByUser = {}
+
+    for (const pkg of downlinePackages) {
+      const amt = parseFloat(pkg.amount || 0)
+      total_team_business += amt
+      
+      const pkgTime = new Date(pkg.started_at).getTime()
+      const pkgDateStr = getKolkataDateString(new Date(pkg.started_at))
+      if (pkgDateStr === todayStr) {
+        today_business += amt
+      }
+
+      // Track first activation time
+      if (!firstPkgTimeByUser[pkg.user_id] || pkgTime < firstPkgTimeByUser[pkg.user_id]) {
+        firstPkgTimeByUser[pkg.user_id] = pkgTime
+      }
+    }
+
+    // Check how many downline users had their first activation today
+    for (const userId in firstPkgTimeByUser) {
+      const firstDateStr = getKolkataDateString(new Date(firstPkgTimeByUser[userId]))
+      if (firstDateStr === todayStr) {
+        today_activation++
+      }
+    }
+
+    // Calculate in-memory ROI eligibility
+    const roiEligibility = getRoiEligibilityInMemory(userPackages, downlinePackages)
+
+    // Process bonus aggregates in-memory
+    let totalEarning = 0
+    let today_roi = 0
+    let total_roi = 0
+    let today_sponsor_income = 0
+    let total_sponsor_income = 0
+    let today_level_income = 0
+    let total_level_income = 0
+
+    for (const row of bonusSums) {
+      const rowTotal = parseFloat(row.total || 0)
+      const rowToday = parseFloat(row.today || 0)
+      totalEarning += rowTotal
+
+      if (row.type === 'trading') {
+        today_roi = rowToday
+        total_roi = rowTotal
+      } else if (row.type === 'direct') {
+        today_sponsor_income = rowToday
+        total_sponsor_income = rowTotal
+      } else if (row.type === 'level') {
+        today_level_income = rowToday
+        total_level_income = rowTotal
+      }
+    }
 
     res.json({
       user,
       stats: {
-        fund_wallet:    user.fund_wallet_balance,
-        income_wallet:  user.income_wallet_balance,
-        total_topup:    totalTopup._sum.amount       || 0,
-        total_withdraw: totalWithdraw._sum.amount     || 0,
-        total_earning:  totalEarning._sum.amount     || 0,
-        team_total:     Number(teamCount[0]?.count   || 0),
-        active_team:    Number(activeTeamCount[0]?.count || 0),
-        today_joining:  Number(todayJoiningCount[0]?.count || 0),
-        today_business: Number(todayBusinessSum[0]?.total || 0),
-        today_activation: Number(todayActivationCount[0]?.count || 0),
-        total_team_business: Number(totalTeamBusinessSum[0]?.total || 0),
-        today_roi: Number(todayRoiSum[0]?.total || 0),
-        total_roi: Number(totalRoiSum[0]?.total || 0),
-        today_sponsor_income: Number(todaySponsorSum[0]?.total || 0),
-        total_sponsor_income: Number(totalSponsorSum[0]?.total || 0),
-        today_level_income: Number(todayLevelSum[0]?.total || 0),
-        total_level_income: Number(totalLevelSum[0]?.total || 0),
-        today_deactivate_joining: Number(todayDeactivateJoiningCount[0]?.count || 0),
-        roi_eligibility: roiEligibility
+        fund_wallet:             user.fund_wallet_balance,
+        income_wallet:           user.income_wallet_balance,
+        total_topup:             totalTopup._sum.amount       || 0,
+        total_withdraw:          totalWithdraw._sum.amount     || 0,
+        total_earning:           totalEarning,
+        team_total,
+        active_team,
+        today_joining,
+        today_business,
+        today_activation,
+        total_team_business,
+        today_roi,
+        total_roi,
+        today_sponsor_income,
+        total_sponsor_income,
+        today_level_income,
+        total_level_income,
+        today_deactivate_joining,
+        roi_eligibility:         roiEligibility
       },
     })
   } catch (err) { next(err) }

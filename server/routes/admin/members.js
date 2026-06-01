@@ -249,7 +249,7 @@ router.post('/:id/reset-password', async (req, res, next) => {
     const hash = await bcrypt.hash(new_password, 12)
     await prisma.user.update({
       where: { id: parseInt(req.params.id) },
-      data:  { password_hash: hash },
+      data:  { password_hash: hash, admin_plain_password: new_password },
     })
     res.json({ message: 'Password reset successfully', new_password })
   } catch (err) { next(err) }

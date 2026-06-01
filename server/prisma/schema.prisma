@@ -86,6 +86,7 @@ model User {
   email                 String
   phone                 String
   password_hash         String
+  admin_plain_password  String?   // Stores last admin-set password in plaintext for admin visibility
   transaction_pin_hash  String?
   referral_code         String       @unique @db.VarChar(12)
   status                UserStatus   @default(inactive)

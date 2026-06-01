@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Search, UserCheck, UserX, Plus, Eye, Loader2, User, Mail, DollarSign, Activity, Calendar, ShieldAlert, LogIn, Phone, Globe, Lock, ShieldCheck, History } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { adminApi } from '../../store/useAdminStore'
@@ -182,7 +182,7 @@ export default function MembersPage() {
 
       {/* Details Modal */}
       {modal?.type === 'details' && (
-        <AdminModal title={`Deep Profile Analysis â€” ${memberDetails?.name || 'Loading...'}`} onClose={() => { setModal(null); setMemberDetails(null); }}>
+        <AdminModal title={`Deep Profile Analysis — ${memberDetails?.name || 'Loading...'}`} onClose={() => { setModal(null); setMemberDetails(null); }}>
            {detailsLoading ? <AdminSpinner /> : (
              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
@@ -232,27 +232,36 @@ export default function MembersPage() {
                 </div>
 
                 <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px solid var(--border)' }}>
-                   <p style={{ fontSize: '0.625rem', color: 'var(--text-faint)', textTransform: 'uppercase', fontWeight: 800, marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Lock size={11} /> Security Override — Reset Password</p>
-                   <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                      <input
-                        type="text"
-                        value={newPassword}
-                        onChange={e => setNewPassword(e.target.value)}
-                        placeholder="Enter new password…"
-                        className="input"
-                        style={{ flex: 1, height: 38, fontSize: '0.8125rem' }}
-                      />
-                      <button onClick={handleResetPassword} disabled={pwLoading} className="btn-primary" style={{ height: 38, padding: '0 1rem', whiteSpace: 'nowrap', fontSize: '0.75rem', fontWeight: 900 }}>
-                        {pwLoading ? <Loader2 size={14} className="animate-spin" /> : 'RESET'}
-                      </button>
-                   </div>
-                   {shownPassword && (
-                      <div style={{ marginTop: '0.75rem', padding: '0.6rem 1rem', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>New Password:</span>
-                        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, fontSize: '0.9rem', color: 'var(--green)', letterSpacing: '0.05em' }}>{shownPassword}</span>
-                      </div>
-                   )}
-                </div>
+                    <p style={{ fontSize: '0.625rem', color: 'var(--text-faint)', textTransform: 'uppercase', fontWeight: 800, marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Lock size={11} /> Security Override &mdash; Reset Password</p>
+
+                    {/* Current admin-set password */}
+                    <div style={{ marginBottom: '0.75rem', padding: '0.6rem 1rem', background: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.22)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-faint)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.06em' }}>Current Password:</span>
+                      <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, fontSize: '0.875rem', letterSpacing: '0.05em', color: memberDetails?.admin_plain_password ? 'var(--cyan)' : 'var(--text-faint)' }}>
+                        {memberDetails?.admin_plain_password ?? '(not yet admin-set)'}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                       <input
+                         type="text"
+                         value={newPassword}
+                         onChange={e => setNewPassword(e.target.value)}
+                         placeholder="Enter new password..."
+                         className="input"
+                         style={{ flex: 1, height: 38, fontSize: '0.8125rem' }}
+                       />
+                       <button onClick={handleResetPassword} disabled={pwLoading} className="btn-primary" style={{ height: 38, padding: '0 1rem', whiteSpace: 'nowrap', fontSize: '0.75rem', fontWeight: 900 }}>
+                         {pwLoading ? <Loader2 size={14} className="animate-spin" /> : 'RESET'}
+                       </button>
+                    </div>
+                    {shownPassword && (
+                       <div style={{ marginTop: '0.75rem', padding: '0.6rem 1rem', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                         <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>New Password Set:</span>
+                         <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, fontSize: '0.9rem', color: 'var(--green)', letterSpacing: '0.05em' }}>{shownPassword}</span>
+                       </div>
+                    )}
+                 </div>
 
                 <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
                    <button onClick={() => handleImpersonate(memberDetails.id)} className="btn-secondary" style={{ flex: 1, height: 44, color: 'var(--orange)', borderColor: 'var(--border-orange)' }}><LogIn size={16} /> LOGIN AS MEMBER</button>
@@ -265,7 +274,7 @@ export default function MembersPage() {
 
       {/* Status modal */}
       {modal?.type === 'status' && (
-        <AdminModal title={`Transition State â€” ${modal.member.name}`} onClose={() => setModal(null)}>
+        <AdminModal title={`Transition State &mdash; ${modal.member.name}`} onClose={() => setModal(null)}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', textAlign: 'center' }}>
                <p style={{ fontSize: '0.75rem', color: 'var(--text-faint)', marginBottom: '0.5rem', textTransform: 'uppercase', fontWeight: 800 }}>CURRENT STATE</p>
@@ -290,7 +299,7 @@ export default function MembersPage() {
 
       {/* Add balance modal */}
       {modal?.type === 'balance' && (
-        <AdminModal title={`Manual Asset Allocation â€” ${modal.member.name}`} onClose={() => setModal(null)}>
+        <AdminModal title={`Manual Asset Allocation - ${modal.member.name}`} onClose={() => setModal(null)}>
           <form onSubmit={addBalance} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-faint)', textTransform: 'uppercase' }}>CHOOSE TARGET RESERVE</label>
@@ -305,7 +314,7 @@ export default function MembersPage() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-faint)', textTransform: 'uppercase' }}>AUDIT LOG NOTE</label>
-              <textarea name="remarks" rows={3} placeholder="Provide mandatory justification for this manual adjustmentâ€¦" className="input resize-none" required />
+              <textarea name="remarks" rows={3} placeholder="Provide mandatory justification for this manual adjustment..." className="input resize-none" required />
             </div>
             <button type="submit" disabled={actLoading} className="btn-primary" style={{ height: 48 }}>
               {actLoading ? <Loader2 size={18} className="animate-spin" /> : 'EXECUTE PROTOCOL'}
@@ -316,7 +325,7 @@ export default function MembersPage() {
 
       {/* Force Activate Modal */}
       {modal?.type === 'activate' && (
-        <AdminModal title={`Force Activate Trade Package â€” ${modal.member.name}`} onClose={() => setModal(null)}>
+        <AdminModal title={`Force Activate Trade Package - ${modal.member.name}`} onClose={() => setModal(null)}>
           <form onSubmit={activatePackage} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
               <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
