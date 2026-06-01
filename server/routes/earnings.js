@@ -6,18 +6,26 @@ router.use(authenticate)
 // ─── GET /api/earnings/summary ────────────────────────────────
 router.get('/summary', async (req, res, next) => {
   try {
-    const [roi, direct, level, reward, royalty] = await Promise.all([
-      prisma.bonus.aggregate({ where: { user_id: req.user.id, type: 'trading' }, _sum: { amount: true } }),
-      prisma.bonus.aggregate({ where: { user_id: req.user.id, type: 'direct'  }, _sum: { amount: true } }),
-      prisma.bonus.aggregate({ where: { user_id: req.user.id, type: 'level'   }, _sum: { amount: true } }),
-      prisma.bonus.aggregate({ where: { user_id: req.user.id, type: 'reward'  }, _sum: { amount: true } }),
-      prisma.bonus.aggregate({ where: { user_id: req.user.id, type: 'royalty' }, _sum: { amount: true } }),
-    ])
-    const trading_income = +(roi._sum.amount     || 0)
-    const direct_bonus   = +(direct._sum.amount  || 0)
-    const level_bonus    = +(level._sum.amount   || 0)
-    const reward_income  = +(reward._sum.amount  || 0)
-    const royalty_income = +(royalty._sum.amount || 0)
+    const bonusGroups = await prisma.bonus.groupBy({
+      by: ['type'],
+      where: { user_id: req.user.id },
+      _sum: { amount: true },
+    })
+
+    let trading_income = 0
+    let direct_bonus   = 0
+    let level_bonus    = 0
+    let reward_income  = 0
+    let royalty_income = 0
+
+    for (const group of bonusGroups) {
+      const sum = +(group._sum.amount || 0)
+      if (group.type === 'trading') trading_income = sum
+      else if (group.type === 'direct') direct_bonus = sum
+      else if (group.type === 'level') level_bonus = sum
+      else if (group.type === 'reward') reward_income = sum
+      else if (group.type === 'royalty') royalty_income = sum
+    }
 
     res.json({ 
       total: trading_income + direct_bonus + level_bonus + reward_income + royalty_income, 
