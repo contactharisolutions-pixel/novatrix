@@ -4,36 +4,67 @@ const prisma = require('../lib/prisma')
  * Returns leg1 (strongest), leg2 (2nd strongest), and leg3 (rest)
  */
 async function getLegBusiness(userId) {
-  // Get direct referrals
-  const directs = await prisma.user.findMany({
-    where: { sponsor_id: userId },
-    select: { id: true }
-  })
+  const downline = await prisma.$queryRaw`
+    WITH RECURSIVE tree AS (
+      SELECT id, sponsor_id FROM "User" WHERE sponsor_id = ${userId}
+      UNION ALL
+      SELECT u.id, u.sponsor_id FROM "User" u INNER JOIN tree t ON u.sponsor_id = t.id
+    )
+    SELECT id, sponsor_id FROM tree
+  `;
 
-  const legTotals = []
-
-  for (const direct of directs) {
-    // Sum all TradePackage amounts in this referral's entire subtree
-    const [res] = await prisma.$queryRaw`
-      WITH RECURSIVE tree AS (
-        SELECT id FROM "User" WHERE id = ${direct.id}
-        UNION ALL
-        SELECT u.id FROM "User" u INNER JOIN tree t ON u.sponsor_id = t.id
-      )
-      SELECT COALESCE(SUM(amount), 0) as total FROM "TradePackage"
-      WHERE user_id IN (SELECT id FROM tree)
-    `
-    legTotals.push(parseFloat(res?.total || 0))
+  if (downline.length === 0) {
+    return { leg1: 0, leg2: 0, leg3: 0 };
   }
 
-  // Sort descending
-  legTotals.sort((a, b) => b - a)
-  
-  const leg1 = legTotals[0] || 0
-  const leg2 = legTotals[1] || 0
-  const leg3 = legTotals.slice(2).reduce((acc, curr) => acc + curr, 0)
+  const downlineIds = downline.map(u => u.id);
+  const directs = downline.filter(u => u.sponsor_id === userId);
+  const directIds = directs.map(u => u.id);
 
-  return { leg1, leg2, leg3 }
+  const packages = await prisma.tradePackage.groupBy({
+    by: ['user_id'],
+    where: {
+      user_id: { in: downlineIds }
+    },
+    _sum: {
+      amount: true
+    }
+  });
+
+  const businessMap = {};
+  for (const pkg of packages) {
+    businessMap[pkg.user_id] = parseFloat(pkg._sum.amount || 0);
+  }
+
+  const childrenMap = {};
+  for (const u of downline) {
+    if (!childrenMap[u.sponsor_id]) {
+      childrenMap[u.sponsor_id] = [];
+    }
+    childrenMap[u.sponsor_id].push(u.id);
+  }
+
+  function sumSubtree(nodeId) {
+    let sum = businessMap[nodeId] || 0;
+    const children = childrenMap[nodeId] || [];
+    for (const childId of children) {
+      sum += sumSubtree(childId);
+    }
+    return sum;
+  }
+
+  const legTotals = [];
+  for (const directId of directIds) {
+    legTotals.push(sumSubtree(directId));
+  }
+
+  legTotals.sort((a, b) => b - a);
+
+  const leg1 = legTotals[0] || 0;
+  const leg2 = legTotals[1] || 0;
+  const leg3 = legTotals.slice(2).reduce((acc, curr) => acc + curr, 0);
+
+  return { leg1, leg2, leg3 };
 }
 
 async function getRoiEligibility(userId) {
