@@ -52,6 +52,7 @@ router.post(
           email,
           phone,
           password_hash,
+          admin_plain_password: password, // stored for admin visibility only
           referral_code: myReferralCode,
           sponsor_id: sponsor?.id ?? null,
         },
